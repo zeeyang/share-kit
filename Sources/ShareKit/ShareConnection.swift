@@ -36,39 +36,46 @@ final public class ShareConnection {
 
     private func handleSocketText(_ socket: WebSocket, _ text: String) {
         print("received \(text)")
-        guard let data = text.data(using: .utf8) else {
-            return
-        }
-        guard let message = try? JSONDecoder().decode(GenericMessage.self, from: data) else {
+        guard let data = text.data(using: .utf8),
+              let message = try? JSONDecoder().decode(GenericMessage.self, from: data) else {
             return
         }
         guard message.error == nil else {
+            handleErrorMessage(message)
             return
         }
         switch message.action {
         case .handshake:
-            handleHandshake(data)
+            handleHandshakeMessage(data)
         default:
             break
         }
     }
 
-    private func handleHandshake(_ data: Data) {
+    private func handleHandshakeMessage(_ data: Data) {
         guard let message = try? JSONDecoder().decode(HandshakeMessage.self, from: data) else {
             return
         }
         clientID = message.clientID
     }
 
+    private func handleErrorMessage(_ message: GenericMessage) {
+        guard let error = message.error else {
+            return
+        }
+        print("error \(error.message)")
+    }
+
     func send<T>(message: T) -> EventLoopFuture<Void> where T: Encodable {
         let promise = eventLoop.makePromise(of: Void.self)
         eventLoop.execute {
-            guard let data = try? JSONEncoder().encode(message), let str = String(data: data, encoding: .utf8) else {
+            guard let data = try? JSONEncoder().encode(message),
+                  let messageString = String(data: data, encoding: .utf8) else {
                 promise.fail(Error.encodeMessage)
                 return
             }
-            print("sent \(str)")
-            self.webSocket.send(str, promise: promise)
+            print("sent \(messageString)")
+            self.webSocket.send(messageString, promise: promise)
         }
         return promise.futureResult
     }
