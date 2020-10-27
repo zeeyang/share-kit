@@ -6,6 +6,7 @@ import SwiftyJSON
 final public class ShareConnection {
     enum Error: Swift.Error, LocalizedError {
         case encodeMessage
+        case documentEntityType
         public var errorDescription: String? {
             return "\(self)"
         }
@@ -16,18 +17,40 @@ final public class ShareConnection {
     let eventLoop: EventLoop
     var webSocket: WebSocket {
         didSet {
-            webSocket.onText(handleSocketText)
-            initiateHandShake()
+            initiateSocket()
         }
     }
+
+    private var documentStore = [DocumentID: OperationalTransformDocument]()
 
     init(socket: WebSocket, on eventLoop: EventLoop) {
         self.webSocket = socket
         self.eventLoop = eventLoop
-        initiateHandShake()
+        initiateSocket()
     }
 
-    func send<T>(message: T) -> EventLoopFuture<Void> where T: Encodable {
+    public func getDocument<Entity>(_ key: String, in collection: String) throws -> ShareDocument<Entity> {
+        let documentID = DocumentID(key, in: collection)
+        let document: ShareDocument<Entity>
+        if documentStore[documentID] != nil {
+            guard let storedDocument = documentStore[documentID] as? ShareDocument<Entity> else {
+                throw Error.documentEntityType
+            }
+            document = storedDocument
+        } else {
+            document = ShareDocument<Entity>(documentID, connection: self)
+        }
+        documentStore[documentID] = document
+        return document
+    }
+
+    public func subscribe<Entity>(_ key: String, in collection: String) throws -> ShareDocument<Entity> {
+        let document: ShareDocument<Entity> = try getDocument(key, in: collection)
+        document.subscribe()
+        return document
+    }
+
+    func send<Message>(message: Message) -> EventLoopFuture<Void> where Message: Encodable {
         let promise = eventLoop.makePromise(of: Void.self)
         eventLoop.execute {
             guard let data = try? JSONEncoder().encode(message),
@@ -43,7 +66,8 @@ final public class ShareConnection {
 }
 
 private extension ShareConnection {
-    func initiateHandShake() {
+    func initiateSocket() {
+        webSocket.onText(handleSocketText)
         let message = HandshakeMessage(clientID: self.clientID)
         send(message: message).whenFailure { _ in
             let _ = self.webSocket.close()
@@ -63,7 +87,9 @@ private extension ShareConnection {
         switch message.action {
         case .handshake:
             handleHandshakeMessage(data)
-        default:
+        case .subscribe:
+            handleSubscribeMessage(data)
+        case .operation:
             break
         }
     }
@@ -73,6 +99,17 @@ private extension ShareConnection {
             return
         }
         clientID = message.clientID
+    }
+
+    func handleSubscribeMessage(_ data: Data) {
+        guard let message = try? JSONDecoder().decode(SubscribeMessage.self, from: data), let data = message.data else {
+            return
+        }
+        let documentID = DocumentID(message.key, in: message.collection)
+        guard let document = documentStore[documentID] else {
+            return
+        }
+        document.put(data)
     }
 
     func handleErrorMessage(_ message: GenericMessage) {

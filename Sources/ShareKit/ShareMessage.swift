@@ -1,6 +1,11 @@
 import Foundation
 import SwiftyJSON
 
+public enum OperationalTransformType: String, Codable {
+    case JSON0 = "http://sharejs.org/types/JSONv0"
+    case TXT0 = "http://sharejs.org/types/TXTv0"
+}
+
 struct GenericMessage: Decodable {
     let action: MessageAction
     let error: Error?
@@ -18,31 +23,47 @@ struct GenericMessage: Decodable {
 struct HandshakeMessage: Codable {
     var action = MessageAction.handshake
     var clientID: String?
+    var protocolMajor: UInt?
+    var protocolMinor: UInt?
+    var type: OperationalTransformType?
 
     enum CodingKeys: String, CodingKey {
         case action = "a"
         case clientID = "id"
+        case protocolMajor = "protocol"
+        case protocolMinor = "protocolMinor"
+        case type
     }
 }
 
 struct SubscribeMessage: Codable {
     var action = MessageAction.subscribe
     var collection: String
-    var document: String
-    var data: JSON
+    var key: String
+    var data: DocumentData?
 
     enum CodingKeys: String, CodingKey {
         case action = "a"
         case collection = "c"
-        case document = "d"
+        case key = "d"
         case data
+    }
+}
+
+struct DocumentData: Codable {
+    var data: JSON?
+    var version: UInt
+
+    enum CodingKeys: String, CodingKey {
+        case data
+        case version = "v"
     }
 }
 
 struct OperationMessage: Codable {
     struct CreateData: Codable {
-        var type: String
-        var data: JSON
+        var type: OperationalTransformType
+        var data: DocumentData
     }
 
     var action = MessageAction.operation
@@ -105,7 +126,7 @@ struct OperationMessage: Codable {
 }
 
 enum OperationData {
-    case create(type: String, data: JSON)
+    case create(type: OperationalTransformType, data: DocumentData)
     case update(operations: [JSON])
     case delete(isDeleted: Bool)
 }
