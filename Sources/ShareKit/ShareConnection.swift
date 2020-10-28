@@ -114,7 +114,7 @@ private extension ShareConnection {
         guard let document = documentStore[documentID] else {
             return
         }
-        document.put(data)
+        try? document.put(data)
     }
 
     func handleOperationMessage(_ data: Data) {
@@ -126,9 +126,9 @@ private extension ShareConnection {
             return
         }
         if message.source == clientID {
-            document.ack(version: message.version, sequence: message.sequence)
+            try? document.ack(version: message.version, sequence: message.sequence)
         } else {
-            document.sync(message.data, version: message.version)
+            try? document.sync(message.data, version: message.version)
         }
     }
 
