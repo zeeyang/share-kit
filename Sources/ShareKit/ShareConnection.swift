@@ -81,16 +81,21 @@ private extension ShareConnection {
             return
         }
         guard message.error == nil else {
+            print(message.error?.message)
             handleErrorMessage(message)
             return
         }
-        switch message.action {
+        handleMessage(message.action, data: data)
+    }
+
+    func handleMessage(_ action: MessageAction, data: Data) {
+        switch action {
         case .handshake:
             handleHandshakeMessage(data)
         case .subscribe:
             handleSubscribeMessage(data)
         case .operation:
-            break
+            handleOperationMessage(data)
         }
     }
 
@@ -105,17 +110,33 @@ private extension ShareConnection {
         guard let message = try? JSONDecoder().decode(SubscribeMessage.self, from: data), let data = message.data else {
             return
         }
-        let documentID = DocumentID(message.key, in: message.collection)
+        let documentID = DocumentID(message.document, in: message.collection)
         guard let document = documentStore[documentID] else {
             return
         }
         document.put(data)
     }
 
+    func handleOperationMessage(_ data: Data) {
+        guard let message = try? JSONDecoder().decode(OperationMessage.self, from: data) else {
+            return
+        }
+        let documentID = DocumentID(message.document, in: message.collection)
+        guard let document = documentStore[documentID] else {
+            return
+        }
+        if message.source == clientID {
+            document.ack(version: message.version, sequence: message.sequence)
+        } else {
+            document.sync(message.data, version: message.version)
+        }
+    }
+
     func handleErrorMessage(_ message: GenericMessage) {
         guard let error = message.error else {
             return
         }
+        // TODO rollback if action = op
         print("error \(error.message)")
     }
 }

@@ -39,13 +39,13 @@ struct HandshakeMessage: Codable {
 struct SubscribeMessage: Codable {
     var action = MessageAction.subscribe
     var collection: String
-    var key: String
+    var document: String
     var data: DocumentData?
 
     enum CodingKeys: String, CodingKey {
         case action = "a"
         case collection = "c"
-        case key = "d"
+        case document = "d"
         case data
     }
 }
@@ -72,17 +72,17 @@ struct OperationMessage: Codable {
     var source: String
     var data: OperationData
     var version: UInt
-    var sequence: UInt?
+    var sequence: UInt
 
     enum CodingKeys: String, CodingKey {
         case action = "a"
         case collection = "c"
         case document = "d"
         case source = "src"
-        case sequence
+        case sequence = "seq"
         case version = "v"
         case create
-        case operations = "ops"
+        case operations = "op"
         case delete
     }
 
@@ -92,6 +92,7 @@ struct OperationMessage: Codable {
         self.source = source
         self.data = data
         self.version = version
+        self.sequence = 0
     }
 
     init(from decoder: Decoder) throws {
@@ -100,8 +101,8 @@ struct OperationMessage: Codable {
         collection = try values.decode(String.self, forKey: .collection)
         document = try values.decode(String.self, forKey: .document)
         source = try values.decode(String.self, forKey: .source)
-        sequence = try values.decode(UInt.self, forKey: .sequence)
         version = try values.decode(UInt.self, forKey: .version)
+        sequence = try values.decode(UInt.self, forKey: .sequence)
 
         if let updateData = try? values.decode([JSON].self, forKey: .operations) {
             data = .update(operations: updateData)

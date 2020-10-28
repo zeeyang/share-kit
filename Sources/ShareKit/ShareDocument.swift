@@ -57,7 +57,7 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     }
 
     public func subscribe() {
-        let msg = SubscribeMessage(collection: id.collection, key: id.key)
+        let msg = SubscribeMessage(collection: id.collection, document: id.key)
         connection.send(message: msg).whenComplete { result in
             switch result {
             case .success:
