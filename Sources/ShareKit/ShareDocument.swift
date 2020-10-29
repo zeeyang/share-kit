@@ -27,12 +27,12 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     public let id: DocumentID
 
     @Published
-    public internal(set) var data: Entity?
-    public internal(set) var version: UInt = 0
-
+    public private(set) var data: Entity?
+    public private(set) var version: UInt?
     var state: State
-    var json = JSON()
-    var transformer = JSON0Transformer()
+
+    internal private(set) var json = JSON()
+    internal private(set) var transformer = JSON0Transformer()
 
     var inflightOperation: OperationData?
     var queuedOperations: [OperationData] = []
@@ -72,9 +72,25 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
 extension ShareDocument {
     // Apply raw JSON operation with OT transformer
     func apply(operations: [JSON]) throws {
-        let json = try transformer.transform(operations, to: self.json)
+        let newJSON = try transformer.transform(operations, to: self.json)
+        try update(json: newJSON)
+    }
+
+    // Update document JSON and cast to entity
+    func update(json: JSON) throws {
         let jsonData = try json.rawData()
-        data = try JSONDecoder().decode(Entity.self, from: jsonData)
+        self.data = try JSONDecoder().decode(Entity.self, from: jsonData)
+        self.json = json
+    }
+
+    // Update document version and validate version sequence
+    func update(version: UInt, validateSequence: Bool) throws {
+        if validateSequence, let oldVersion = self.version {
+            guard version == oldVersion + 1 else {
+                throw OperationalTransformError.invalidVersion
+            }
+        }
+        self.version = version
     }
 
     // Send ops to server or append to ops queue
@@ -97,7 +113,7 @@ extension ShareDocument {
             document: id.key,
             source: source,
             data: operation,
-            version: version
+            version: version ?? 0
         )
         connection.send(message: msg).whenComplete { result in
             switch result {
