@@ -70,7 +70,7 @@ struct OperationMessage: Codable {
     var collection: String
     var document: String
     var source: String
-    var data: OperationData
+    var data: OperationData?
     var version: UInt
     var sequence: UInt
 
@@ -111,17 +111,28 @@ struct OperationMessage: Codable {
         } else if let deleteData = try? values.decode(Bool.self, forKey: .delete) {
             data = .delete(isDeleted: deleteData)
         } else {
-            throw MessageError.unknownOperationAction
+            data = nil
         }
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(action, forKey: .action)
         try container.encode(collection, forKey: .collection)
         try container.encode(document, forKey: .document)
+        try container.encode(source, forKey: .source)
+        try container.encode(version, forKey: .version)
+        try container.encode(sequence, forKey: .sequence)
 
         switch data {
-        default: break
+        case .create(_, let data)?:
+            try container.encode(data, forKey: .create)
+        case .update(let operations)?:
+            try container.encode(operations, forKey: .operations)
+        case .delete(let isDeleted)?:
+            try container.encode(isDeleted, forKey: .delete)
+        case nil:
+            break
         }
     }
 }
@@ -145,11 +156,4 @@ enum MessageAction: String, Codable {
     case handshake = "hs"
     case subscribe = "s"
     case operation = "op"
-}
-
-enum MessageError: Error, LocalizedError {
-    case unknownOperationAction
-    public var errorDescription: String? {
-        return "\(self)"
-    }
 }

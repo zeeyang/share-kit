@@ -1,7 +1,7 @@
 import SwiftyJSON
 
 extension ShareDocument: MutableJSON {
-    func addNumber(_ amount: Int, at path: JSONSubscriptType...) throws {
+    public func addNumber(_ amount: Int, at path: JSONSubscriptType...) throws {
         let dict = [
             makeOp(path, at: .path),
             makeOp(amount, at: .numberAdd)
@@ -12,7 +12,7 @@ extension ShareDocument: MutableJSON {
         send(.update(operations: json))
     }
 
-    func setObject(_ object: JSON, at path: JSONSubscriptType...) throws {
+    public func setObject(_ object: JSON, at path: JSONSubscriptType...) throws {
         var dict = [makeOp(path, at: .path)]
         guard json[path] != object else { return } // TODO throw?
         switch path.last?.jsonKey {
@@ -35,7 +35,7 @@ extension ShareDocument: MutableJSON {
         send(.update(operations: json))
     }
 
-    func removeObject(at path: JSONSubscriptType...) throws {
+    public func removeObject(at path: JSONSubscriptType...) throws {
         var dict = [makeOp(path, at: .path)]
         let object = json[path]
         switch path.last?.jsonKey {

@@ -22,6 +22,7 @@ final public class ShareConnection {
     }
 
     private var documentStore = [DocumentID: OperationalTransformDocument]()
+    private var opSequence: UInt = 1
 
     init(socket: WebSocket, on eventLoop: EventLoop) {
         self.webSocket = socket
@@ -53,7 +54,15 @@ final public class ShareConnection {
     func send<Message>(message: Message) -> EventLoopFuture<Void> where Message: Encodable {
         let promise = eventLoop.makePromise(of: Void.self)
         eventLoop.execute {
-            guard let data = try? JSONEncoder().encode(message),
+            let sendMessage: Message
+            if var operationMessage = message as? OperationMessage {
+                operationMessage.sequence = self.opSequence
+                self.opSequence += 1
+                sendMessage = operationMessage as! Message
+            } else {
+                sendMessage = message
+            }
+            guard let data = try? JSONEncoder().encode(sendMessage),
                   let messageString = String(data: data, encoding: .utf8) else {
                 promise.fail(Error.encodeMessage)
                 return
@@ -85,50 +94,51 @@ private extension ShareConnection {
             handleErrorMessage(message)
             return
         }
-        handleMessage(message.action, data: data)
+        do {
+            try handleMessage(message.action, data: data)
+        } catch {
+            print(error)
+        }
     }
 
-    func handleMessage(_ action: MessageAction, data: Data) {
+    func handleMessage(_ action: MessageAction, data: Data) throws {
         switch action {
         case .handshake:
-            handleHandshakeMessage(data)
+            try handleHandshakeMessage(data)
         case .subscribe:
-            handleSubscribeMessage(data)
+            try handleSubscribeMessage(data)
         case .operation:
-            handleOperationMessage(data)
+            try handleOperationMessage(data)
         }
     }
 
-    func handleHandshakeMessage(_ data: Data) {
-        guard let message = try? JSONDecoder().decode(HandshakeMessage.self, from: data) else {
-            return
-        }
+    func handleHandshakeMessage(_ data: Data) throws {
+        let message = try JSONDecoder().decode(HandshakeMessage.self, from: data)
         clientID = message.clientID
     }
 
-    func handleSubscribeMessage(_ data: Data) {
-        guard let message = try? JSONDecoder().decode(SubscribeMessage.self, from: data), let data = message.data else {
-            return
-        }
+    func handleSubscribeMessage(_ data: Data) throws {
+        let message = try JSONDecoder().decode(SubscribeMessage.self, from: data)
         let documentID = DocumentID(message.document, in: message.collection)
-        guard let document = documentStore[documentID] else {
+        guard let document = documentStore[documentID], let data = message.data else {
             return
         }
-        try? document.put(data)
+        try document.put(data)
     }
 
-    func handleOperationMessage(_ data: Data) {
-        guard let message = try? JSONDecoder().decode(OperationMessage.self, from: data) else {
-            return
-        }
+    func handleOperationMessage(_ data: Data) throws {
+        let message = try JSONDecoder().decode(OperationMessage.self, from: data)
         let documentID = DocumentID(message.document, in: message.collection)
         guard let document = documentStore[documentID] else {
             return
         }
         if message.source == clientID {
-            try? document.ack(version: message.version, sequence: message.sequence)
+            try document.ack(version: message.version, sequence: message.sequence)
         } else {
-            try? document.sync(message.data, version: message.version)
+            guard let operationData = message.data else {
+                throw OperationalTransformError.missingOperationData
+            }
+            try document.sync(operationData, version: message.version)
         }
     }
 

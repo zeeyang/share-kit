@@ -21,6 +21,7 @@ protocol MutableJSON {
 
 enum OperationalTransformError: Error {
     case pathDoesNotExist
+    case missingOperationData
     case invalidJSONData
     case invalidVersion
     case invalidAck
