@@ -3,7 +3,7 @@ import SwiftyJSON
 
 public enum OperationalTransformType: String, Codable {
     case JSON0 = "http://sharejs.org/types/JSONv0"
-    case TXT0 = "http://sharejs.org/types/TXTv0"
+    case TXT0 = "http://sharejs.org/types/textv0"
 }
 
 struct GenericMessage: Decodable {
@@ -40,7 +40,7 @@ struct SubscribeMessage: Codable {
     var action = MessageAction.subscribe
     var collection: String
     var document: String
-    var data: DocumentData?
+    var data: VersionedData?
 
     enum CodingKeys: String, CodingKey {
         case action = "a"
@@ -50,7 +50,7 @@ struct SubscribeMessage: Codable {
     }
 }
 
-struct DocumentData: Codable {
+struct VersionedData: Codable {
     var data: JSON?
     var version: UInt
 
@@ -63,7 +63,7 @@ struct DocumentData: Codable {
 struct OperationMessage: Codable {
     struct CreateData: Codable {
         var type: OperationalTransformType
-        var data: DocumentData
+        var data: JSON
     }
 
     var action = MessageAction.operation
@@ -138,7 +138,7 @@ struct OperationMessage: Codable {
 }
 
 enum OperationData {
-    case create(type: OperationalTransformType, data: DocumentData)
+    case create(type: OperationalTransformType, data: JSON)
     case update(operations: [JSON])
     case delete(isDeleted: Bool)
 }

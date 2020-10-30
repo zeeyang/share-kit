@@ -45,10 +45,11 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
         self.state = .blank
     }
 
-    public func create(_ data: JSON, type: OperationalTransformType = .JSON0) throws {
-        let document = DocumentData(data: data, version: 0)
-        try put(document)
-        send(.create(type: type, data: document))
+    public func create(_ data: Entity, type: OperationalTransformType = .JSON0) throws {
+        let jsonData = try JSONEncoder().encode(data)
+        let json = JSON(jsonData)
+        try put(json, version: 1)
+        send(.create(type: type, data: json))
     }
 
     public func delete() {

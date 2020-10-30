@@ -120,10 +120,15 @@ private extension ShareConnection {
     func handleSubscribeMessage(_ data: Data) throws {
         let message = try JSONDecoder().decode(SubscribeMessage.self, from: data)
         let documentID = DocumentID(message.document, in: message.collection)
-        guard let document = documentStore[documentID], let data = message.data else {
-            return
+        guard let document = documentStore[documentID] else {
+            throw OperationalTransformError.unknownDocument
         }
-        try document.put(data)
+        if let versionedData = message.data {
+            try document.put(versionedData.data, version: versionedData.version)
+        } else {
+            // TODO ack empty subscribe resp
+//            try document.ack()
+        }
     }
 
     func handleOperationMessage(_ data: Data) throws {

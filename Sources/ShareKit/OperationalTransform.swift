@@ -7,7 +7,7 @@ protocol OperationalTransformer {
 protocol OperationalTransformDocument {
     func pause()
     func resume()
-    func put(_ value: DocumentData) throws
+    func put(_ data: JSON?, version: UInt) throws
     func sync(_ data: OperationData, version: UInt) throws
     func ack(version: UInt, sequence: UInt) throws
     func rollback(_ data: OperationData?, version: UInt) throws
@@ -20,6 +20,7 @@ protocol MutableJSON {
 }
 
 enum OperationalTransformError: Error {
+    case unknownDocument
     case pathDoesNotExist
     case missingOperationData
     case invalidJSONData

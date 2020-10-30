@@ -19,23 +19,22 @@ extension ShareDocument: OperationalTransformDocument {
     }
 
     // Replace document data
-    func put(_ document: DocumentData) throws {
-        if let json = document.data {
+    func put(_ data: JSON?, version: UInt) throws {
+        if let json = data {
             try update(json: json)
             state = .ready
         } else {
             state = .deleted
         }
-        try update(version: document.version, validateSequence: false)
+        try update(version: version, validateSequence: false)
         resume()
     }
 
     // Sync with remote ops from server
     func sync(_ data: OperationData, version: UInt) throws {
-        try update(version: version + 1, validateSequence: true)
         switch data {
         case .create(_, let document):
-            try put(document)
+            try put(document, version: version)
         case .update(let ops):
             try apply(operations: ops)
         case .delete:
