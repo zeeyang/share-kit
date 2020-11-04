@@ -13,6 +13,13 @@ protocol OperationalTransformDocument {
     func rollback(_ data: OperationData?, version: UInt) throws
 }
 
+protocol OperationalTransformQuery {
+    var collection: String { get }
+    var query: JSON { get }
+    func put(_ data: [VersionedDocumentData]) throws
+    func apply(_ diffs: [ArrayChange]) throws
+}
+
 protocol MutableJSON {
     func addNumber(_ amount: Int, at path: JSONSubscriptType...) throws
     func setObject(_ object: JSON, at path: JSONSubscriptType...) throws
@@ -20,10 +27,7 @@ protocol MutableJSON {
 }
 
 enum OperationalTransformError: Error {
-    case unknownDocument
     case pathDoesNotExist
     case missingOperationData
     case invalidJSONData
-    case invalidVersion
-    case invalidAck
 }

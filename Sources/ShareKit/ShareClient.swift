@@ -56,6 +56,7 @@ public final class ShareClient {
                         return
                     }
                     eventLoop.execute {
+                        connection.disconnect()
                         self.connect(url, connection: connection, onConnect: onConnect)
                     }
                 }
@@ -67,6 +68,7 @@ public final class ShareClient {
                 return
             }
             eventLoop.scheduleTask(in: .seconds(1)) {
+                connection?.disconnect()
                 self.connect(url, connection: connection, onConnect: onConnect)
             }
         }

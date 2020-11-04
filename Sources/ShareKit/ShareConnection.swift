@@ -4,9 +4,11 @@ import WebSocketKit
 import SwiftyJSON
 
 final public class ShareConnection {
-    enum Error: Swift.Error, LocalizedError {
+    enum ShareConnectionError: Swift.Error, LocalizedError {
         case encodeMessage
         case documentEntityType
+        case unkownQueryID
+        case unknownDocument
         public var errorDescription: String? {
             return "\(self)"
         }
@@ -24,6 +26,9 @@ final public class ShareConnection {
     private var documentStore = [DocumentID: OperationalTransformDocument]()
     private var opSequence: UInt = 1
 
+    private var queryCollectionStore = [UInt: OperationalTransformQuery]()
+    private var querySequence: UInt = 1
+
     init(socket: WebSocket, on eventLoop: EventLoop) {
         self.webSocket = socket
         self.eventLoop = eventLoop
@@ -31,11 +36,11 @@ final public class ShareConnection {
     }
 
     public func getDocument<Entity>(_ key: String, in collection: String) throws -> ShareDocument<Entity> {
-        let documentID = DocumentID(key, in: collection)
+        let documentID = DocumentID(key: key, collection: collection)
         let document: ShareDocument<Entity>
         if documentStore[documentID] != nil {
             guard let storedDocument = documentStore[documentID] as? ShareDocument<Entity> else {
-                throw Error.documentEntityType
+                throw ShareConnectionError.documentEntityType
             }
             document = storedDocument
         } else {
@@ -45,10 +50,24 @@ final public class ShareConnection {
         return document
     }
 
-    public func subscribe<Entity>(_ key: String, in collection: String) throws -> ShareDocument<Entity> {
-        let document: ShareDocument<Entity> = try getDocument(key, in: collection)
+    public func subscribe<Entity>(document: String, in collection: String) throws -> ShareDocument<Entity> {
+        let document: ShareDocument<Entity> = try getDocument(document, in: collection)
         document.subscribe()
         return document
+    }
+
+    public func subscribe<Entity>(query: JSON, in collection: String) throws -> ShareQueryCollection<Entity> {
+        let collection: ShareQueryCollection<Entity> = ShareQueryCollection(query, in: collection, connection: self)
+        collection.subscribe(querySequence)
+        queryCollectionStore[querySequence] = collection
+        querySequence += 1
+        return collection
+    }
+
+    func disconnect() {
+        for document in documentStore.values {
+            document.pause()
+        }
     }
 
     func send<Message>(message: Message) -> EventLoopFuture<Void> where Message: Encodable {
@@ -64,7 +83,7 @@ final public class ShareConnection {
             }
             guard let data = try? JSONEncoder().encode(sendMessage),
                   let messageString = String(data: data, encoding: .utf8) else {
-                promise.fail(Error.encodeMessage)
+                promise.fail(ShareConnectionError.encodeMessage)
                 return
             }
             print("sent \(messageString)")
@@ -107,6 +126,10 @@ private extension ShareConnection {
             try handleHandshakeMessage(data)
         case .subscribe:
             try handleSubscribeMessage(data)
+        case .querySubscribe:
+            try handleQuerySubscribeMessage(data)
+        case .query:
+            try handleQueryMessage(data)
         case .operation:
             try handleOperationMessage(data)
         }
@@ -119,9 +142,9 @@ private extension ShareConnection {
 
     func handleSubscribeMessage(_ data: Data) throws {
         let message = try JSONDecoder().decode(SubscribeMessage.self, from: data)
-        let documentID = DocumentID(message.document, in: message.collection)
+        let documentID = DocumentID(key: message.document, collection: message.collection)
         guard let document = documentStore[documentID] else {
-            throw OperationalTransformError.unknownDocument
+            throw ShareConnectionError.unknownDocument
         }
         if let versionedData = message.data {
             try document.put(versionedData.data, version: versionedData.version)
@@ -131,9 +154,30 @@ private extension ShareConnection {
         }
     }
 
+    func handleQuerySubscribeMessage(_ data: Data) throws {
+        let message = try JSONDecoder().decode(QuerySubscribeMessage.self, from: data)
+        guard let collection = queryCollectionStore[message.queryID] else {
+            throw ShareConnectionError.unkownQueryID
+        }
+        if let versionedData = message.data {
+            try collection.put(versionedData)
+        } else {
+            // TODO ack empty subscribe resp
+//            try document.ack()
+        }
+    }
+
+    func handleQueryMessage(_ data: Data) throws {
+        let message = try JSONDecoder().decode(QueryMessage.self, from: data)
+        guard let collection = queryCollectionStore[message.queryID] else {
+            throw ShareConnectionError.unkownQueryID
+        }
+        try collection.apply(message.diff)
+    }
+
     func handleOperationMessage(_ data: Data) throws {
         let message = try JSONDecoder().decode(OperationMessage.self, from: data)
-        let documentID = DocumentID(message.document, in: message.collection)
+        let documentID = DocumentID(key: message.document, collection: message.collection)
         guard let document = documentStore[documentID] else {
             return
         }

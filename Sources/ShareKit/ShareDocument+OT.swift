@@ -4,6 +4,7 @@ import SwiftyJSON
 extension ShareDocument: OperationalTransformDocument {
     // Shift inflightOps into queuedOps for re-send
     func pause() {
+        state = .paused
         if let inflight = inflightOperation {
             queuedOperations.append(inflight)
             inflightOperation = nil
@@ -45,7 +46,7 @@ extension ShareDocument: OperationalTransformDocument {
     // Verify server ack for inflight message
     func ack(version: UInt, sequence: UInt) throws {
         guard inflightOperation != nil else {
-            throw OperationalTransformError.invalidAck
+            throw ShareDocumentError.operationAck
         }
         try update(version: version + 1, validateSequence: true)
         inflightOperation = nil

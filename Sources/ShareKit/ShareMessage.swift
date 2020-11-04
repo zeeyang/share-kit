@@ -40,13 +40,43 @@ struct SubscribeMessage: Codable {
     var action = MessageAction.subscribe
     var collection: String
     var document: String
+    var version: UInt?
     var data: VersionedData?
 
     enum CodingKeys: String, CodingKey {
         case action = "a"
         case collection = "c"
         case document = "d"
+        case version = "v"
         case data
+    }
+}
+
+struct QuerySubscribeMessage: Codable {
+    var action = MessageAction.querySubscribe
+    var queryID: UInt
+    var query: JSON?
+    var collection: String?
+    var data: [VersionedDocumentData]?
+
+    enum CodingKeys: String, CodingKey {
+        case action = "a"
+        case collection = "c"
+        case queryID = "id"
+        case query = "q"
+        case data
+    }
+}
+
+struct VersionedDocumentData: Codable {
+    var document: String
+    var data: JSON?
+    var version: UInt
+
+    enum CodingKeys: String, CodingKey {
+        case document = "d"
+        case data
+        case version = "v"
     }
 }
 
@@ -57,6 +87,76 @@ struct VersionedData: Codable {
     enum CodingKeys: String, CodingKey {
         case data
         case version = "v"
+    }
+}
+
+struct QueryMessage: Codable {
+    var action = MessageAction.query
+    var queryID: UInt
+    var diff: [ArrayChange]
+
+    enum CodingKeys: String, CodingKey {
+        case action = "a"
+        case queryID = "id"
+        case diff
+    }
+}
+
+enum ArrayChange: Codable {
+    case move(from: Int, to: Int, howMany: Int)
+    case insert(index: Int, values: [JSON])
+    case remove(index: Int, howMany: Int)
+
+    enum ArrayChangeType: String, Codable {
+        case move, insert, remove
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case from
+        case to
+        case index
+        case howMany
+        case values
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try values.decode(ArrayChangeType.self, forKey: .type)
+        switch type {
+        case .move:
+            let from = try values.decode(Int.self, forKey: .from)
+            let to = try values.decode(Int.self, forKey: .to)
+            let howMany = try values.decode(Int.self, forKey: .howMany)
+            self = .move(from: from, to: to, howMany: howMany)
+        case .insert:
+            let index = try values.decode(Int.self, forKey: .index)
+            let newValues = try values.decode([JSON].self, forKey: .values)
+            self = .insert(index: index, values: newValues)
+        case .remove:
+            let index = try values.decode(Int.self, forKey: .index)
+            let howMany = try values.decode(Int.self, forKey: .howMany)
+            self = .remove(index: index, howMany: howMany)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .move(let from, let to, let howMany):
+            try container.encode(ArrayChangeType.move, forKey: .type)
+            try container.encode(from, forKey: .from)
+            try container.encode(to, forKey: .to)
+            try container.encode(howMany, forKey: .howMany)
+        case .insert(let index, let values):
+            try container.encode(ArrayChangeType.insert, forKey: .type)
+            try container.encode(index, forKey: .index)
+            try container.encode(values, forKey: .values)
+        case .remove(let index, let howMany):
+            try container.encode(ArrayChangeType.remove, forKey: .type)
+            try container.encode(index, forKey: .index)
+            try container.encode(howMany, forKey: .howMany)
+        }
     }
 }
 
@@ -155,5 +255,7 @@ enum OperationKey: String {
 enum MessageAction: String, Codable {
     case handshake = "hs"
     case subscribe = "s"
+    case query = "q"
+    case querySubscribe = "qs"
     case operation = "op"
 }
