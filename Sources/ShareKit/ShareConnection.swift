@@ -172,7 +172,7 @@ private extension ShareConnection {
         guard let collection = queryCollectionStore[message.queryID] else {
             throw ShareConnectionError.unkownQueryID
         }
-        try collection.apply(message.diff)
+        try collection.sync(message.diff)
     }
 
     func handleOperationMessage(_ data: Data) throws {

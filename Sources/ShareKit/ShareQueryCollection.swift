@@ -35,7 +35,7 @@ extension ShareQueryCollection: OperationalTransformQuery {
         documents = newDocuments
     }
 
-    func apply(_ diffs: [ArrayChange]) throws {
+    func sync(_ diffs: [ArrayChange]) throws {
         for diff in diffs {
             switch diff {
             case .move(let from, let to, let howMany):

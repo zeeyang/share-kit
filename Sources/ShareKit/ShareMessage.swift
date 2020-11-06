@@ -243,13 +243,13 @@ enum OperationData {
     case delete(isDeleted: Bool)
 }
 
-enum OperationKey: String {
-    case path = "p"
-    case numberAdd = "na"
-    case objectInsert = "oi"
-    case objectDelete = "od"
-    case listInsert = "li"
-    case listDelete = "ld"
+enum OperationKey {
+    static let path = "p"
+    static let numberAdd = "na"
+    static let objectInsert = "oi"
+    static let objectDelete = "od"
+    static let listInsert = "li"
+    static let listDelete = "ld"
 }
 
 enum MessageAction: String, Codable {

@@ -28,10 +28,11 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     @Published
     public private(set) var data: Entity?
     public private(set) var version: UInt?
+    public private(set) var json = JSON()
+
     var state: State //TODO private setter and state transitions
 
-    internal private(set) var json = JSON()
-    internal private(set) var transformer = JSON0Transformer()
+    private var transformer = JSON0Transformer()
 
     var inflightOperation: OperationData?
     var queuedOperations: [OperationData] = []
@@ -76,7 +77,7 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
 extension ShareDocument {
     // Apply raw JSON operation with OT transformer
     func apply(operations: [JSON]) throws {
-        let newJSON = try transformer.transform(operations, to: self.json)
+        let newJSON = try transformer.apply(operations, to: self.json)
         try update(json: newJSON)
     }
 

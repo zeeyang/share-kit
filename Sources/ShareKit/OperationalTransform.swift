@@ -1,7 +1,7 @@
 import SwiftyJSON
 
 protocol OperationalTransformer {
-    func transform(_ operations: [JSON], to json: JSON) throws -> JSON
+    func apply(_ operations: [JSON], to json: JSON) throws -> JSON
 }
 
 protocol OperationalTransformDocument {
@@ -17,16 +17,11 @@ protocol OperationalTransformQuery {
     var collection: String { get }
     var query: JSON { get }
     func put(_ data: [VersionedDocumentData]) throws
-    func apply(_ diffs: [ArrayChange]) throws
-}
-
-protocol MutableJSON {
-    func addNumber(_ amount: Int, at path: JSONSubscriptType...) throws
-    func setObject(_ object: JSON, at path: JSONSubscriptType...) throws
-    func removeObject(at path: JSONSubscriptType...) throws
+    func sync(_ diffs: [ArrayChange]) throws
 }
 
 enum OperationalTransformError: Error {
+    case emptyPath
     case pathDoesNotExist
     case missingOperationData
     case invalidJSONData
