@@ -80,6 +80,7 @@ extension ShareDocument {
     }
 
     public func set(_ value: String, at path: JSONSubscriptType...) throws {
+        // TODO throw if document type is not JSON0
         var operationJSON = JSON([
             OperationKey.path: path,
             OperationKey.subtype: OperationalTransformSubtype.TEXT0.rawValue
