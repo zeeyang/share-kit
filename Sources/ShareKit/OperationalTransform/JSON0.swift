@@ -1,7 +1,11 @@
 import SwiftyJSON
 
+let JSON0Subtypes = [
+    OperationalTransformSubtype.TEXT0: TEXT0Transformer.self
+]
+
 struct JSON0Transformer: OperationalTransformer {
-    func apply(_ operations: [JSON], to json: JSON) throws -> JSON {
+    static func apply(_ operations: [JSON], to json: JSON) throws -> JSON {
         var json = json
         for operation in operations {
             guard let path = operation[OperationKey.path].array?.map({ $0.stringValue }), !path.isEmpty else {
@@ -26,6 +30,13 @@ struct JSON0Transformer: OperationalTransformer {
             opObjectInsert: if operation[OperationKey.objectInsert].exists() {
                 let insert = operation[OperationKey.objectInsert]
                 json[path] = insert
+            }
+            opSubtype: if operation[OperationKey.subtype].exists() {
+                guard let subtypeKey = OperationalTransformSubtype(rawValue: operation[OperationKey.subtype].stringValue), let subtypeTransformer = JSON0Subtypes[subtypeKey] else {
+                    throw OperationalTransformError.unsupportedSubtype
+                }
+                let newSubJSON = try subtypeTransformer.apply(operation[OperationKey.operation].arrayValue, to: json[path])
+                json[path] = newSubJSON
             }
         }
         return json
@@ -64,6 +75,20 @@ extension ShareDocument {
                 operationJSON[OperationKey.listDelete] = json[path]
             }
         }
+        try apply(operations: [operationJSON])
+        send(.update(operations: [operationJSON]))
+    }
+
+    public func set(_ value: String, at path: JSONSubscriptType...) throws {
+        var operationJSON = JSON([
+            OperationKey.path: path,
+            OperationKey.subtype: OperationalTransformSubtype.TEXT0.rawValue
+        ])
+        let currentValue = json[path].stringValue
+        guard let stringOperation = stringDiff(currentValue, value) else {
+            return
+        }
+        operationJSON[OperationKey.operation] = [stringOperation]
         try apply(operations: [operationJSON])
         send(.update(operations: [operationJSON]))
     }

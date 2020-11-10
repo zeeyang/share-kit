@@ -1,6 +1,15 @@
 import Foundation
 import SwiftyJSON
 
+protocol OperationalTransformDocument {
+    func pause()
+    func resume()
+    func put(_ data: JSON?, version: UInt) throws
+    func sync(_ data: OperationData, version: UInt) throws
+    func ack(version: UInt, sequence: UInt) throws
+    func rollback(_ data: OperationData?, version: UInt) throws
+}
+
 extension ShareDocument: OperationalTransformDocument {
     // Shift inflightOps into queuedOps for re-send
     func pause() {

@@ -3,7 +3,11 @@ import SwiftyJSON
 
 public enum OperationalTransformType: String, Codable {
     case JSON0 = "http://sharejs.org/types/JSONv0"
-    case TXT0 = "http://sharejs.org/types/textv0"
+    case TEXT0 = "http://sharejs.org/types/textv0"
+}
+
+public enum OperationalTransformSubtype: String, Codable {
+    case TEXT0 = "text0"
 }
 
 struct GenericMessage: Decodable {
@@ -245,11 +249,15 @@ enum OperationData {
 
 enum OperationKey {
     static let path = "p"
+    static let subtype = "t"
+    static let operation = "o"
     static let numberAdd = "na"
     static let objectInsert = "oi"
     static let objectDelete = "od"
     static let listInsert = "li"
     static let listDelete = "ld"
+    static let insert = "i"
+    static let delete = "d"
 }
 
 enum MessageAction: String, Codable {

@@ -32,7 +32,7 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
 
     var state: State //TODO private setter and state transitions
 
-    private var transformer = JSON0Transformer()
+    private var transformer = JSON0Transformer.self
 
     var inflightOperation: OperationData?
     var queuedOperations: [OperationData] = []

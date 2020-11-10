@@ -2,6 +2,13 @@ import Foundation
 import NIO
 import SwiftyJSON
 
+protocol OperationalTransformQuery {
+    var collection: String { get }
+    var query: JSON { get }
+    func put(_ data: [VersionedDocumentData]) throws
+    func sync(_ diffs: [ArrayChange]) throws
+}
+
 final public class ShareQueryCollection<Entity> where Entity: Codable {
     public let collection: String
     public let query: JSON
