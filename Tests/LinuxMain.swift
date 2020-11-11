@@ -1,7 +1,7 @@
 import XCTest
 
-import share_kitTests
+import ShareKitTests
 
 var tests = [XCTestCaseEntry]()
-tests += share_kitTests.allTests()
+tests += ShareKitTests.allTests()
 XCTMain(tests)

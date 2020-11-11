@@ -1,15 +1,32 @@
 import XCTest
+import SwiftyJSON
 @testable import ShareKit
 
 final class ShareKitTests: XCTestCase {
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(ShareKit().text, "Hello, World!")
+    func testTEXT0() throws {
+        let original = JSON("ABCD")
+
+        let insertSingle: JSON = ["p": 1, "i": "X"]
+        let result1 = try TEXT0Transformer.apply([insertSingle], to: original)
+        XCTAssertEqual(result1.stringValue, "AXBCD")
+
+        let insertMultiple: JSON = ["p": 1, "i": "XYZ"]
+        let result2 = try TEXT0Transformer.apply([insertMultiple], to: original)
+        XCTAssertEqual(result2.stringValue, "AXYZBCD")
+
+        let insertStart: JSON = ["p": 0, "i": "XYZ"]
+        let result3 = try TEXT0Transformer.apply([insertStart], to: original)
+        XCTAssertEqual(result3.stringValue, "XYZABCD")
+
+        let insertEnd: JSON = ["p": 4, "i": "XYZ"]
+        let result4 = try TEXT0Transformer.apply([insertEnd], to: original)
+        XCTAssertEqual(result4.stringValue, "ABCDXYZ")
+
+        let insertOverflow: JSON = ["p": 5, "i": "XYZ"]
+        XCTAssertThrowsError(try TEXT0Transformer.apply([insertOverflow], to: original))
     }
 
     static var allTests = [
-        ("testExample", testExample),
+        ("testTEXT0", testTEXT0),
     ]
 }

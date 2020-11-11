@@ -7,6 +7,9 @@ struct TEXT0Transformer: OperationalTransformer {
             guard let startIndex = operation[OperationKey.path].int else {
                 continue
             }
+            guard startIndex <= characters.count else {
+                throw OperationalTransformError.indexOutOfRange
+            }
             let prefix = characters[0..<startIndex]
             var endIndex = startIndex
             if let deletion = operation[OperationKey.delete].string {
