@@ -36,7 +36,7 @@ final public class ShareConnection {
     }
 
     public func getDocument<Entity>(_ key: String, in collection: String) throws -> ShareDocument<Entity> {
-        let documentID = DocumentID(key: key, collection: collection)
+        let documentID = DocumentID(key, in: collection)
         let document: ShareDocument<Entity>
         if documentStore[documentID] != nil {
             guard let storedDocument = documentStore[documentID] as? ShareDocument<Entity> else {
@@ -142,7 +142,7 @@ private extension ShareConnection {
 
     func handleSubscribeMessage(_ data: Data) throws {
         let message = try JSONDecoder().decode(SubscribeMessage.self, from: data)
-        let documentID = DocumentID(key: message.document, collection: message.collection)
+        let documentID = DocumentID(message.document, in: message.collection)
         guard let document = documentStore[documentID] else {
             throw ShareConnectionError.unknownDocument
         }
@@ -177,7 +177,7 @@ private extension ShareConnection {
 
     func handleOperationMessage(_ data: Data) throws {
         let message = try JSONDecoder().decode(OperationMessage.self, from: data)
-        let documentID = DocumentID(key: message.document, collection: message.collection)
+        let documentID = DocumentID(message.document, in: message.collection)
         guard let document = documentStore[documentID] else {
             return
         }

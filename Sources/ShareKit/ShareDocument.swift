@@ -4,6 +4,11 @@ import SwiftyJSON
 public struct DocumentID: Hashable {
     let key: String
     let collection: String
+
+    public init(_ key: String, in collection: String) {
+        self.key = key
+        self.collection = collection
+    }
 }
 
 final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
