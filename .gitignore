@@ -5,3 +5,8 @@
 DerivedData
 .swiftpm
 Package.resolved
+xcuserdata/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
