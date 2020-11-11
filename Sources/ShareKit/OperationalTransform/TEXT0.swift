@@ -14,6 +14,12 @@ struct TEXT0Transformer: OperationalTransformer {
             var endIndex = startIndex
             if let deletion = operation[OperationKey.delete].string {
                 endIndex += deletion.count
+                guard endIndex <= characters.count else {
+                    throw OperationalTransformError.indexOutOfRange
+                }
+                guard deletion == String(characters[startIndex..<endIndex]) else {
+                    throw OperationalTransformError.oldDataMismatch
+                }
             }
             let suffix = characters[endIndex...]
             if let insertion = operation[OperationKey.insert].string {

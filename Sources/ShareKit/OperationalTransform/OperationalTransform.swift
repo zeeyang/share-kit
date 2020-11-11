@@ -13,4 +13,5 @@ enum OperationalTransformError: Error {
     case invalidJSONData
     case unsupportedSubtype
     case indexOutOfRange
+    case oldDataMismatch
 }
