@@ -46,6 +46,7 @@ extension ShareDocument: OperationalTransformDocument {
         case .create(_, let document):
             try put(document, version: version)
         case .update(let ops):
+            try update(version: version + 1, validateSequence: true)
             try apply(operations: ops)
         case .delete:
             state = .deleted
