@@ -28,6 +28,6 @@ class CounterViewModel: ObservableObject {
     }
 
     func bumpCounter() {
-        try? document?.addNumber(1, at: "numClicks")
+        try? document?.change(amount: 1, at: "numClicks")
     }
 }

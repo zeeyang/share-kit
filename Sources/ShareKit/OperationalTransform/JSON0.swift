@@ -44,7 +44,9 @@ struct JSON0Transformer: OperationalTransformer {
 }
 
 extension ShareDocument {
-    public func addNumber(_ amount: Int, at path: JSONSubscriptType...) throws {
+    public func set(number value: Double, at path: JSONSubscriptType...) throws {
+        let currentValue = json[path].doubleValue
+        let amount = value - currentValue
         let operationJSON = JSON([
             OperationKey.path: path,
             OperationKey.numberAdd: amount
@@ -53,7 +55,16 @@ extension ShareDocument {
         send(.update(operations: [operationJSON]))
     }
 
-    public func setObject(_ object: JSON, at path: JSONSubscriptType...) throws {
+    public func change(amount: Double, at path: JSONSubscriptType...) throws {
+        let operationJSON = JSON([
+            OperationKey.path: path,
+            OperationKey.numberAdd: amount
+        ])
+        try apply(operations: [operationJSON])
+        send(.update(operations: [operationJSON]))
+    }
+
+    public func set(object: JSON, at path: JSONSubscriptType...) throws {
         guard json[path] != object else {
             return
         }
@@ -79,17 +90,17 @@ extension ShareDocument {
         send(.update(operations: [operationJSON]))
     }
 
-    public func set(_ value: String, at path: JSONSubscriptType...) throws {
+    public func set(string value: String, at path: JSONSubscriptType...) throws {
         // TODO throw if document type is not JSON0
-        var operationJSON = JSON([
-            OperationKey.path: path,
-            OperationKey.subtype: OperationalTransformSubtype.TEXT0.rawValue
-        ])
         let currentValue = json[path].stringValue
         guard let stringOperation = stringDiff(currentValue, value) else {
             return
         }
-        operationJSON[OperationKey.operation] = [stringOperation]
+        let operationJSON = JSON([
+            OperationKey.path: path,
+            OperationKey.subtype: OperationalTransformSubtype.TEXT0.rawValue,
+            OperationKey.operation: stringOperation
+        ])
         try apply(operations: [operationJSON])
         send(.update(operations: [operationJSON]))
     }

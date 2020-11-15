@@ -77,7 +77,7 @@ class PlayerViewModel: ObservableObject, Identifiable {
 
     func bumpScore(_ score: Int = 5) throws {
         if let document = document {
-            try document.addNumber(score, at: "score")
+            try document.change(amount: score, at: "score")
         } else {
             self.score += score
         }
