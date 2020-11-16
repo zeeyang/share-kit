@@ -3,6 +3,22 @@ import SwiftyJSON
 @testable import ShareKit
 
 final class ShareKitTests: XCTestCase {
+    func testJSON0Delete() throws {
+        let original: JSON = ["name": "outter", "nested": ["name": "inner"]]
+
+        let deleteRoot: JSON = ["p": ["name"], "od": "outter"]
+        let result1 = try JSON0Transformer.apply([deleteRoot], to: original)
+        XCTAssertEqual(result1, JSON(["nested": ["name": "inner"]]))
+
+        let deleteNestedInner: JSON = ["p": ["nested", "name"], "od": "inner"]
+        let result2 = try JSON0Transformer.apply([deleteNestedInner], to: original)
+        XCTAssertEqual(result2, JSON(["name": "outter", "nested": JSON()]))
+
+        let deleteNestedBranch: JSON = ["p": ["nested"], "od": ["name": "inner"]]
+        let result3 = try JSON0Transformer.apply([deleteNestedBranch], to: original)
+        XCTAssertEqual(result3, JSON(["name": "outter"]))
+    }
+
     func testTEXT0Insert() throws {
         let original = JSON("ABCD")
 

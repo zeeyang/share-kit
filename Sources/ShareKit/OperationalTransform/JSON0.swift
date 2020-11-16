@@ -9,34 +9,44 @@ struct JSON0Transformer: OperationalTransformer {
         var json = json
         for operation in operations {
             guard let path = operation[OperationKey.path].array?.map({ $0.stringValue }), !path.isEmpty else {
-                throw OperationalTransformError.pathDoesNotExist
+                throw OperationalTransformError.emptyPath
             }
-
-            opNumberAdd: if let numberAdd = operation[OperationKey.numberAdd].int, let currentValue = json[path].int {
-                let newValue = currentValue + numberAdd
-                json[path].int = newValue
-            }
-            opObjectDelete: if operation[OperationKey.objectDelete].exists() {
-                var parentPath = path
-                guard let key = parentPath.popLast() else {
-                    break opObjectDelete
+            if operation[OperationKey.objectDelete].exists() || operation[OperationKey.objectInsert].exists() {
+                if operation[OperationKey.objectDelete].exists() {
+                    guard operation[OperationKey.objectDelete] == json[path] else {
+                        throw OperationalTransformError.oldDataMismatch
+                    }
+                    var parentPath = path
+                    guard let key = parentPath.popLast() else {
+                        throw OperationalTransformError.emptyPath
+                    }
+                    if parentPath.isEmpty {
+                        guard json.dictionaryObject != nil else {
+                            throw OperationalTransformError.pathDoesNotExist
+                        }
+                        json.dictionaryObject?.removeValue(forKey: key)
+                    } else {
+                        guard json[parentPath].dictionaryObject != nil else {
+                            throw OperationalTransformError.pathDoesNotExist
+                        }
+                        json[parentPath].dictionaryObject?.removeValue(forKey: key)
+                    }
                 }
-                if parentPath.isEmpty {
-                    json.dictionaryObject?.removeValue(forKey: key)
-                } else {
-                    json[parentPath].dictionaryObject?.removeValue(forKey: key)
+                if operation[OperationKey.objectInsert].exists() {
+                    json[path] = operation[OperationKey.objectInsert]
                 }
-            }
-            opObjectInsert: if operation[OperationKey.objectInsert].exists() {
-                let insert = operation[OperationKey.objectInsert]
-                json[path] = insert
-            }
-            opSubtype: if operation[OperationKey.subtype].exists() {
+            } else if let numberAdd = operation[OperationKey.numberAdd].double {
+                guard let currentValue = json[path].double else {
+                    throw OperationalTransformError.oldDataMismatch
+                }
+                json[path].double = currentValue + numberAdd
+            } else if operation[OperationKey.subtype].exists() {
                 guard let subtypeKey = OperationalTransformSubtype(rawValue: operation[OperationKey.subtype].stringValue), let subtypeTransformer = JSON0Subtypes[subtypeKey] else {
                     throw OperationalTransformError.unsupportedSubtype
                 }
-                let newSubJSON = try subtypeTransformer.apply(operation[OperationKey.operation].arrayValue, to: json[path])
-                json[path] = newSubJSON
+                json[path] = try subtypeTransformer.apply(operation[OperationKey.operation].arrayValue, to: json[path])
+            } else {
+                throw OperationalTransformError.unsupportedOperation
             }
         }
         return json

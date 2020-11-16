@@ -14,4 +14,5 @@ enum OperationalTransformError: Error {
     case unsupportedSubtype
     case indexOutOfRange
     case oldDataMismatch
+    case unsupportedOperation
 }
