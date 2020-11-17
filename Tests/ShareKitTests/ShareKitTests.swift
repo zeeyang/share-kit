@@ -3,20 +3,76 @@ import SwiftyJSON
 @testable import ShareKit
 
 final class ShareKitTests: XCTestCase {
-    func testJSON0Delete() throws {
+    func testJSON0ObjectInsert() throws {
+        let original: JSON = ["x": 100, "nested": ["y": 200]]
+
+        let insertSimple: JSON = ["p": ["name"], "oi": "outter"]
+        let result1 = try JSON0Transformer.apply([insertSimple], to: original)
+        XCTAssertEqual(result1, JSON(["name": "outter", "x": 100, "nested": ["y": 200]]))
+
+        let insertSimpleNonEmpty: JSON = ["p": ["x"], "oi": 100]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertSimpleNonEmpty], to: original))
+
+        let insertNestedInner: JSON = ["p": ["nested", "name"], "oi": "inner"]
+        let result2 = try JSON0Transformer.apply([insertNestedInner], to: original)
+        XCTAssertEqual(result2, JSON(["x": 100, "nested": ["name": "inner", "y": 200]]))
+
+        let insertNestedNonEmpty: JSON = ["p": ["nested", "y"], "oi": 200]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertNestedNonEmpty], to: original))
+
+        let insertNestedBranch: JSON = ["p": ["newbranch"], "oi": ["name": "inner"]]
+        let result3 = try JSON0Transformer.apply([insertNestedBranch], to: original)
+        XCTAssertEqual(result3, JSON(["x": 100, "nested": ["y": 200], "newbranch": ["name": "inner"]]))
+
+        let insertNestedBranchNonEmpty: JSON = ["p": ["nested"], "oi": []]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertNestedBranchNonEmpty], to: original))
+    }
+
+    func testJSON0ObjectDelete() throws {
         let original: JSON = ["name": "outter", "nested": ["name": "inner"]]
 
-        let deleteRoot: JSON = ["p": ["name"], "od": "outter"]
-        let result1 = try JSON0Transformer.apply([deleteRoot], to: original)
+        let deleteSimple: JSON = ["p": ["name"], "od": "outter"]
+        let result1 = try JSON0Transformer.apply([deleteSimple], to: original)
         XCTAssertEqual(result1, JSON(["nested": ["name": "inner"]]))
+
+        let deleteSimpleMismatch: JSON = ["p": ["name"], "od": "not-outter"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteSimpleMismatch], to: original))
 
         let deleteNestedInner: JSON = ["p": ["nested", "name"], "od": "inner"]
         let result2 = try JSON0Transformer.apply([deleteNestedInner], to: original)
         XCTAssertEqual(result2, JSON(["name": "outter", "nested": JSON()]))
 
+        let deleteNestedMismatch: JSON = ["p": ["nested", "name"], "od": "not-inner"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteNestedMismatch], to: original))
+
         let deleteNestedBranch: JSON = ["p": ["nested"], "od": ["name": "inner"]]
         let result3 = try JSON0Transformer.apply([deleteNestedBranch], to: original)
         XCTAssertEqual(result3, JSON(["name": "outter"]))
+
+        let deleteNestedBranchMismatch: JSON = ["p": ["nested"], "od": ["name": "not-inner"]]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteNestedBranchMismatch], to: original))
+    }
+
+    func testJSON0ObjectReplace() throws {
+        let original: JSON = ["name": "outter", "nested": ["name": "inner"]]
+
+        let replaceSimple: JSON = ["p": ["name"], "od": "outter", "oi": "new-outter"]
+        let result1 = try JSON0Transformer.apply([replaceSimple], to: original)
+        XCTAssertEqual(result1, JSON(["name": "new-outter", "nested": ["name": "inner"]]))
+
+        let insertSimpleMismatch: JSON = ["p": ["name"], "od": "non-exist", "oi": 100]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertSimpleMismatch], to: original))
+
+        let replaceInner: JSON = ["p": ["nested", "name"], "od": "inner", "oi": "new-inner"]
+        let result2 = try JSON0Transformer.apply([replaceInner], to: original)
+        XCTAssertEqual(result2, JSON(["name": "outter", "nested": ["name": "new-inner"]]))
+
+        let insertNestedMismatch: JSON = ["p": ["nested", "name"], "od": "non-exist", "oi": 100]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertNestedMismatch], to: original))
+
+        let replaceBranch: JSON = ["p": ["nested"], "od": ["name": "inner"], "oi": "new-branch"]
+        let result3 = try JSON0Transformer.apply([replaceBranch], to: original)
+        XCTAssertEqual(result3, JSON(["name": "outter", "nested": "new-branch"]))
     }
 
     func testTEXT0Insert() throws {
@@ -69,6 +125,9 @@ final class ShareKitTests: XCTestCase {
     }
 
     static var allTests = [
+        ("testJSON0ObjectInsert", testJSON0ObjectInsert),
+        ("testJSON0ObjectDelete", testJSON0ObjectDelete),
+        ("testJSON0ObjectReplace", testJSON0ObjectReplace),
         ("testTEXT0Insert", testTEXT0Insert),
         ("testTEXT0Delete", testTEXT0Delete),
     ]

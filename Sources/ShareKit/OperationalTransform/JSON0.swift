@@ -21,18 +21,15 @@ struct JSON0Transformer: OperationalTransformer {
                         throw OperationalTransformError.emptyPath
                     }
                     if parentPath.isEmpty {
-                        guard json.dictionaryObject != nil else {
-                            throw OperationalTransformError.pathDoesNotExist
-                        }
                         json.dictionaryObject?.removeValue(forKey: key)
                     } else {
-                        guard json[parentPath].dictionaryObject != nil else {
-                            throw OperationalTransformError.pathDoesNotExist
-                        }
                         json[parentPath].dictionaryObject?.removeValue(forKey: key)
                     }
                 }
                 if operation[OperationKey.objectInsert].exists() {
+                    guard !json[path].exists() else {
+                        throw OperationalTransformError.oldDataMismatch
+                    }
                     json[path] = operation[OperationKey.objectInsert]
                 }
             } else if let numberAdd = operation[OperationKey.numberAdd].double {
