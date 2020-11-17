@@ -7,7 +7,7 @@ protocol OperationalTransformer {
 }
 
 enum OperationalTransformError: Error {
-    case emptyPath
+    case invalidPath
     case pathDoesNotExist
     case missingOperationData
     case invalidJSONData

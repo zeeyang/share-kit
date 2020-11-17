@@ -75,6 +75,30 @@ final class ShareKitTests: XCTestCase {
         XCTAssertEqual(result3, JSON(["name": "outter", "nested": "new-branch"]))
     }
 
+    func testJSON0ListInsert() throws {
+        let original: JSON = ["x": [100, 200], "nested": ["y": ["sam", "iam"]]]
+
+        let insertSimple: JSON = ["p": ["x", 2], "li": 150]
+        let result1 = try JSON0Transformer.apply([insertSimple], to: original)
+        XCTAssertEqual(result1, JSON(["x": [100, 200, 150], "nested": ["y": ["sam", "iam"]]]))
+
+        let insertNested: JSON = ["p": ["nested", "y", 1], "li": "ham"]
+        let result2 = try JSON0Transformer.apply([insertNested], to: original)
+        XCTAssertEqual(result2, JSON(["x": [100, 200], "nested": ["y": ["sam", "ham", "iam"]]]))
+    }
+
+    func testJSON0ListDelete() throws {
+        let original: JSON = ["x": [100, 200], "nested": ["y": ["sam", "iam"]]]
+
+        let deleteSimple: JSON = ["p": ["x", 1], "ld": 200]
+        let result1 = try JSON0Transformer.apply([deleteSimple], to: original)
+        XCTAssertEqual(result1, JSON(["x": [100], "nested": ["y": ["sam", "iam"]]]))
+
+        let deleteNested: JSON = ["p": ["nested", "y", 1], "ld": "iam"]
+        let result2 = try JSON0Transformer.apply([deleteNested], to: original)
+        XCTAssertEqual(result2, JSON(["x": [100, 200], "nested": ["y": ["sam"]]]))
+    }
+
     func testTEXT0Insert() throws {
         let original = JSON("ABCD")
 
