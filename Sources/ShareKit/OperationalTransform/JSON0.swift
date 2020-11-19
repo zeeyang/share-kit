@@ -8,7 +8,16 @@ struct JSON0Transformer: OperationalTransformer {
     static func apply(_ operations: [JSON], to json: JSON) throws -> JSON {
         var json = json
         for operation in operations {
-            guard let path = operation[OperationKey.path].array?.map({ $0.stringValue }), !path.isEmpty else {
+            let path: [JSONSubscriptType] = try operation[OperationKey.path].arrayValue.map { token in
+                if let pathKey = token.string {
+                    return pathKey
+                } else if let pathIndex = token.int {
+                    return pathIndex
+                } else {
+                    throw OperationalTransformError.invalidPath
+                }
+            }
+            guard !path.isEmpty else {
                 throw OperationalTransformError.invalidPath
             }
             if operation[OperationKey.objectDelete].exists() || operation[OperationKey.objectInsert].exists() {
@@ -17,7 +26,7 @@ struct JSON0Transformer: OperationalTransformer {
                         throw OperationalTransformError.oldDataMismatch
                     }
                     var parentPath = path
-                    guard let key = parentPath.popLast() else {
+                    guard let lastPath = parentPath.popLast(), case let .key(key) = lastPath.jsonKey else {
                         throw OperationalTransformError.invalidPath
                     }
                     if parentPath.isEmpty {
@@ -34,23 +43,23 @@ struct JSON0Transformer: OperationalTransformer {
                 }
             } else if operation[OperationKey.listInsert].exists() || operation[OperationKey.listDelete].exists() {
                 var parentPath = path
-                guard let lastKey = parentPath.popLast(), let index = Int(lastKey) else {
+                guard let lastKey = parentPath.popLast(), case let .index(index) = lastKey.jsonKey else {
                     throw OperationalTransformError.invalidPath
                 }
                 guard let arrayCount = json[parentPath].arrayObject?.count else {
                     throw OperationalTransformError.invalidJSONData
                 }
                 if operation[OperationKey.listDelete].exists() {
-                    guard index < arrayCount else {
+                    guard index >= 0, index < arrayCount else {
                         throw OperationalTransformError.invalidPath
                     }
-                    guard operation[OperationKey.objectDelete] == json[path] else {
+                    guard operation[OperationKey.listDelete] == json[path] else {
                         throw OperationalTransformError.oldDataMismatch
                     }
                     json[parentPath].arrayObject?.remove(at: index)
                 }
                 if operation[OperationKey.listInsert].exists() {
-                    guard index <= arrayCount else {
+                    guard index >= 0, index <= arrayCount else {
                         throw OperationalTransformError.invalidPath
                     }
                     let newData = operation[OperationKey.listInsert]
