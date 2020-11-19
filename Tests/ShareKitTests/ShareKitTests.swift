@@ -82,9 +82,30 @@ final class ShareKitTests: XCTestCase {
         let result1 = try JSON0Transformer.apply([insertSimple], to: original)
         XCTAssertEqual(result1, JSON(["x": [100, 200, 150], "nested": ["y": ["sam", "iam"]]]))
 
+        let insertNoPath: JSON = ["p": ["no-path"], "li": 300]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertNoPath], to: original))
+
+        let insertNoIndex: JSON = ["p": ["x"], "li": 300]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertNoIndex], to: original))
+
+        let insertOutRange: JSON = ["p": ["x", 3], "li": 300]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertOutRange], to: original))
+
+        let insertInvalidIndex: JSON = ["p": ["x", -1], "li": 300]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertInvalidIndex], to: original))
+
         let insertNested: JSON = ["p": ["nested", "y", 1], "li": "ham"]
         let result2 = try JSON0Transformer.apply([insertNested], to: original)
         XCTAssertEqual(result2, JSON(["x": [100, 200], "nested": ["y": ["sam", "ham", "iam"]]]))
+
+        let insertNestedNoIndex: JSON = ["p": ["nested", "y"], "li": "ham"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertNestedNoIndex], to: original))
+
+        let insertNestedOutRange: JSON = ["p": ["nested", "y", 3], "li": "ham"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertNestedOutRange], to: original))
+
+        let insertNestedInvalidIndex: JSON = ["p": ["nested", "y", -1], "li": "ham"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([insertNestedInvalidIndex], to: original))
     }
 
     func testJSON0ListDelete() throws {
@@ -94,9 +115,39 @@ final class ShareKitTests: XCTestCase {
         let result1 = try JSON0Transformer.apply([deleteSimple], to: original)
         XCTAssertEqual(result1, JSON(["x": [100], "nested": ["y": ["sam", "iam"]]]))
 
+        let deleteMismatch: JSON = ["p": ["x", 1], "ld": 300]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteMismatch], to: original))
+
+        let deleteNoPath: JSON = ["p": ["no-path"], "ld": 300]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteNoPath], to: original))
+
+        let deleteNoIndex: JSON = ["p": ["x"], "ld": 300]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteNoIndex], to: original))
+
+        let deleteOutRange: JSON = ["p": ["x", 3], "ld": 300]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteOutRange], to: original))
+
+        let deleteInvalidIndex: JSON = ["p": ["x", -1], "ld": 300]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteInvalidIndex], to: original))
+
         let deleteNested: JSON = ["p": ["nested", "y", 1], "ld": "iam"]
         let result2 = try JSON0Transformer.apply([deleteNested], to: original)
         XCTAssertEqual(result2, JSON(["x": [100, 200], "nested": ["y": ["sam"]]]))
+
+        let deleteNestedMismatch: JSON = ["p": ["nested", "y", 1], "ld": "mismatch"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteNestedMismatch], to: original))
+
+        let deleteNestedNoPath: JSON = ["p": ["nested", "no-path"], "ld": "iam"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteNestedNoPath], to: original))
+
+        let deleteNestedNoIndex: JSON = ["p": ["nested", "y"], "ld": "iam"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteNestedNoIndex], to: original))
+
+        let deleteNestedOutRange: JSON = ["p": ["nested", "y", 3], "ld": "iam"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteNestedOutRange], to: original))
+
+        let deleteNestedInvalidIndex: JSON = ["p": ["nested", "y", -1], "ld": "iam"]
+        XCTAssertThrowsError(try JSON0Transformer.apply([deleteNestedInvalidIndex], to: original))
     }
 
     func testTEXT0Insert() throws {
@@ -120,6 +171,9 @@ final class ShareKitTests: XCTestCase {
 
         let insertOverflow: JSON = ["p": 5, "i": "XYZ"]
         XCTAssertThrowsError(try TEXT0Transformer.apply([insertOverflow], to: original))
+
+        let insertNoIndex: JSON = ["p": "1", "i": "XYZ"]
+        XCTAssertThrowsError(try TEXT0Transformer.apply([insertNoIndex], to: original))
     }
 
     func testTEXT0Delete() throws {
@@ -152,6 +206,8 @@ final class ShareKitTests: XCTestCase {
         ("testJSON0ObjectInsert", testJSON0ObjectInsert),
         ("testJSON0ObjectDelete", testJSON0ObjectDelete),
         ("testJSON0ObjectReplace", testJSON0ObjectReplace),
+        ("testJSON0ListInsert", testJSON0ListInsert),
+        ("testJSON0ListDelete", testJSON0ListDelete),
         ("testTEXT0Insert", testTEXT0Insert),
         ("testTEXT0Delete", testTEXT0Delete),
     ]

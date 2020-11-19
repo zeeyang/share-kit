@@ -5,7 +5,7 @@ struct TEXT0Transformer: OperationalTransformer {
         var characters = Array(json.stringValue)
         for operation in operations {
             guard let startIndex = operation[OperationKey.path].int else {
-                continue
+                throw OperationalTransformError.invalidPath
             }
             guard startIndex <= characters.count else {
                 throw OperationalTransformError.indexOutOfRange
