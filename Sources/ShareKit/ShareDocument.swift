@@ -106,12 +106,15 @@ extension ShareDocument {
     // Send ops to server or append to ops queue
     func send(_ operation: OperationData) {
         guard inflightOperation == nil, let source = connection.clientID else {
-            // TODO drop op is last is delete
             if let queueItem = queuedOperations.first,
                case .update(let queueOps) = queueItem,
                case .update(let currentOps) = operation {
                 // Merge with last op group at end of queue
-                self.queuedOperations[0] = .update(operations: queueOps + currentOps)
+                var newOps = queueOps
+                for operation in currentOps {
+                    newOps = transformer.append(operation, to: newOps)
+                }
+                self.queuedOperations[0] = .update(operations: newOps)
             } else {
                 // Enqueue op group
                 self.queuedOperations.insert(operation, at: 0)

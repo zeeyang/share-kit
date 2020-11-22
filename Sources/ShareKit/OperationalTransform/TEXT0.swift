@@ -30,6 +30,10 @@ struct TEXT0Transformer: OperationalTransformer {
         }
         return JSON(String(characters))
     }
+
+    static func append(_ operation: JSON, to previousOperations: [JSON]) -> [JSON] {
+        return previousOperations + [operation]
+    }
 }
 
 func stringDiff(_ source: String, _ target: String) -> JSON? {

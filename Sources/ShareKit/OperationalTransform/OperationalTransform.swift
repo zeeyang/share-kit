@@ -2,8 +2,8 @@ import SwiftyJSON
 
 protocol OperationalTransformer {
     static func apply(_ operations: [JSON], to json: JSON) throws -> JSON
+    static func append(_ operations: JSON, to previousOperations: [JSON]) -> [JSON]
     // TODO static func inverse(_ operations: [JSON])
-    // TODO static func merge(_ operations: [JSON], with previousOperations: [JSON])
 }
 
 enum OperationalTransformError: Error {
