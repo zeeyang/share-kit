@@ -12,7 +12,7 @@ extension ShareDocument {
         send(.update(operations: [operationJSON]))
     }
 
-    public func change(amount: Double, at path: JSONSubscriptType...) throws {
+    public func change<T>(amount: T, at path: JSONSubscriptType...) throws where T: AdditiveArithmetic {
         let operationJSON = JSON([
             OperationKey.path: path,
             OperationKey.numberAdd: amount

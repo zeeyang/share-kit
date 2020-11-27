@@ -64,7 +64,7 @@ class PlayerViewModel: ObservableObject, Identifiable {
         $name
             .dropFirst()
             .sink { value in
-                try? document.set(value, at: "name")
+                try? document.set(string: value, at: "name")
             }
             .store(in: &bag)
     }
