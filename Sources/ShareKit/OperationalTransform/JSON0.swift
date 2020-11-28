@@ -5,6 +5,8 @@ let JSON0Subtypes = [
 ]
 
 struct JSON0Transformer: OperationalTransformer {
+    static let type = OperationalTransformType.JSON0
+
     static func apply(_ operations: [JSON], to json: JSON) throws -> JSON {
         var json = json
         for operation in operations {

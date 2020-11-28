@@ -1,6 +1,8 @@
 import SwiftyJSON
 
 struct TEXT0Transformer: OperationalTransformer {
+    static let type = OperationalTransformType.TEXT0
+
     static func apply(_ operations: [JSON], to json: JSON) throws -> JSON {
         var characters = Array(json.stringValue)
         for operation in operations {
