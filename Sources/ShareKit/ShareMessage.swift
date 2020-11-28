@@ -45,6 +45,7 @@ struct SubscribeMessage: Codable {
     var collection: String
     var document: String
     var version: UInt?
+    var type: OperationalTransformType?
     var data: VersionedData?
 
     enum CodingKeys: String, CodingKey {
@@ -52,6 +53,7 @@ struct SubscribeMessage: Codable {
         case collection = "c"
         case document = "d"
         case version = "v"
+        case type
         case data
     }
 }
@@ -74,13 +76,15 @@ struct QuerySubscribeMessage: Codable {
 
 struct VersionedDocumentData: Codable {
     var document: String
-    var data: JSON?
     var version: UInt
+    var data: JSON?
+    var type: OperationalTransformType?
 
     enum CodingKeys: String, CodingKey {
         case document = "d"
-        case data
         case version = "v"
+        case data
+        case type
     }
 }
 
@@ -229,8 +233,9 @@ struct OperationMessage: Codable {
         try container.encode(sequence, forKey: .sequence)
 
         switch data {
-        case .create(_, let data)?:
-            try container.encode(data, forKey: .create)
+        case .create(let type, let data)?:
+            let createData = CreateData(type: type, data: data)
+            try container.encode(createData, forKey: .create)
         case .update(let operations)?:
             try container.encode(operations, forKey: .operations)
         case .delete(let isDeleted)?:

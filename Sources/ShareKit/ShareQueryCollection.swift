@@ -35,7 +35,7 @@ extension ShareQueryCollection: OperationalTransformQuery {
     func put(_ data: [VersionedDocumentData]) throws {
         let newDocuments: [ShareDocument<Entity>] = try data.map {
             let document: ShareDocument<Entity> = try connection.getDocument($0.document, in: collection)
-            try document.put($0.data, version: $0.version)
+            try document.put($0.data, version: $0.version, type: $0.type)
             document.subscribe()
             return document
         }
@@ -53,8 +53,9 @@ extension ShareQueryCollection: OperationalTransformQuery {
             case .insert(let index, let values):
                 // TODO: cascade subscription
                 let docs: [ShareDocument<Entity>] = try values.map { json in
-                    let doc: ShareDocument<Entity> = try connection.getDocument(json["d"].stringValue, in: self.collection)
-                    try doc.put(json, version: json["v"].uIntValue)
+                    let doc: ShareDocument<Entity> = try connection.getDocument(json["d"].stringValue, in: self.collection) // TODO decoder for json
+                    let type = OperationalTransformType(rawValue: json["type"].stringValue)
+                    try doc.put(json, version: json["v"].uIntValue, type: type)
                     return doc
                 }
                 documents.insert(contentsOf: docs, at: index)

@@ -6,7 +6,7 @@ import SwiftyJSON
 final public class ShareConnection {
     enum ShareConnectionError: Swift.Error, LocalizedError {
         case encodeMessage
-        case operationalTransformType
+        case unsupportedType
         case documentEntityType
         case unkownQueryID
         case unknownDocument
@@ -143,7 +143,7 @@ private extension ShareConnection {
         clientID = message.clientID
         if let defaultType = message.type {
             guard let transformer = OperationalTransformTypes[defaultType] else {
-                throw ShareConnectionError.operationalTransformType
+                throw ShareConnectionError.unsupportedType
             }
             self.defaultTransformer = transformer
         }
@@ -156,7 +156,7 @@ private extension ShareConnection {
             throw ShareConnectionError.unknownDocument
         }
         if let versionedData = message.data {
-            try document.put(versionedData.data, version: versionedData.version)
+            try document.put(versionedData.data, version: versionedData.version, type: message.type)
         } else {
             // TODO ack empty subscribe resp
 //            try document.ack()

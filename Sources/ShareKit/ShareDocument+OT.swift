@@ -4,7 +4,7 @@ import SwiftyJSON
 protocol OperationalTransformDocument {
     func pause()
     func resume()
-    func put(_ data: JSON?, version: UInt) throws
+    func put(_ data: JSON?, version: UInt, type: OperationalTransformType?) throws
     func sync(_ data: OperationData, version: UInt) throws
     func ack(version: UInt, sequence: UInt) throws
     func rollback(_ data: OperationData?, version: UInt) throws
@@ -29,13 +29,21 @@ extension ShareDocument: OperationalTransformDocument {
     }
 
     // Replace document data
-    func put(_ data: JSON?, version: UInt) throws {
+    func put(_ data: JSON?, version: UInt, type: OperationalTransformType?) throws {
+        if let type = type {
+            guard let transformer = OperationalTransformTypes[type] else {
+                throw ShareDocumentError.operationalTransformType
+            }
+            documentTransformer = transformer
+        }
+
         if let json = data {
             try update(json: json)
             state = .ready
         } else {
             state = .deleted
         }
+
         try update(version: version, validateSequence: false)
         resume()
     }
@@ -43,8 +51,8 @@ extension ShareDocument: OperationalTransformDocument {
     // Sync with remote ops from server
     func sync(_ data: OperationData, version: UInt) throws {
         switch data {
-        case .create(_, let document):
-            try put(document, version: version)
+        case .create(let type, let document):
+            try put(document, version: version, type: type)
         case .update(let ops):
             try update(version: version + 1, validateSequence: true)
             try apply(operations: ops)

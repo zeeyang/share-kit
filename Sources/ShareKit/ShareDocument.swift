@@ -14,6 +14,7 @@ public struct DocumentID: Hashable {
 final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     enum ShareDocumentError: Error {
         case decodeDocumentData
+        case operationalTransformType
         case applyTransform
         case subscription
         case operationVersion
@@ -37,12 +38,15 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
 
     var state: State //TODO private setter and state transitions
 
-    private var transformer = JSON0Transformer.self // TODO set transformer with document type
+    var documentTransformer: OperationalTransformer.Type?
+    var transformer: OperationalTransformer.Type {
+        return documentTransformer ?? connection.defaultTransformer
+    }
 
     var inflightOperation: OperationData?
     var queuedOperations: [OperationData] = []
 
-    private let connection: ShareConnection
+    let connection: ShareConnection
 
     init(_ documentID: DocumentID, connection: ShareConnection) {
         self.id = documentID
@@ -50,11 +54,11 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
         self.state = .paused
     }
 
-    public func create(_ data: Entity, type: OperationalTransformType = .JSON0) throws {
+    public func create(_ data: Entity, type: OperationalTransformType? = nil) throws {
         let jsonData = try JSONEncoder().encode(data)
         let json = JSON(jsonData)
-        try put(json, version: 1)
-        send(.create(type: type, data: json))
+        try put(json, version: 1, type: type)
+        send(.create(type: type ?? connection.defaultTransformer.type, data: json))
     }
 
     public func delete() {
