@@ -6,6 +6,7 @@ import SwiftyJSON
 final public class ShareConnection {
     enum ShareConnectionError: Swift.Error, LocalizedError {
         case encodeMessage
+        case operationalTransformType
         case documentEntityType
         case unkownQueryID
         case unknownDocument
@@ -23,6 +24,7 @@ final public class ShareConnection {
         }
     }
 
+    private(set) var defaultTransformer: OperationalTransformer.Type
     private var documentStore = [DocumentID: OperationalTransformDocument]()
     private var opSequence: UInt = 1
 
@@ -32,6 +34,7 @@ final public class ShareConnection {
     init(socket: WebSocket, on eventLoop: EventLoop) {
         self.webSocket = socket
         self.eventLoop = eventLoop
+        self.defaultTransformer = JSON0Transformer.self
         initiateSocket()
     }
 
@@ -138,6 +141,12 @@ private extension ShareConnection {
     func handleHandshakeMessage(_ data: Data) throws {
         let message = try JSONDecoder().decode(HandshakeMessage.self, from: data)
         clientID = message.clientID
+        if let defaultType = message.type {
+            guard let transformer = OperationalTransformTypes[defaultType] else {
+                throw ShareConnectionError.operationalTransformType
+            }
+            self.defaultTransformer = transformer
+        }
     }
 
     func handleSubscribeMessage(_ data: Data) throws {
