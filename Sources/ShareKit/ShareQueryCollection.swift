@@ -52,10 +52,9 @@ extension ShareQueryCollection: OperationalTransformQuery {
                 documents.insert(contentsOf: slice, at: to)
             case .insert(let index, let values):
                 // TODO: cascade subscription
-                let docs: [ShareDocument<Entity>] = try values.map { json in
-                    let doc: ShareDocument<Entity> = try connection.getDocument(json["d"].stringValue, in: self.collection) // TODO decoder for json
-                    let type = OperationalTransformType(rawValue: json["type"].stringValue)
-                    try doc.put(json, version: json["v"].uIntValue, type: type)
+                let docs: [ShareDocument<Entity>] = try values.map { item in
+                    let doc: ShareDocument<Entity> = try connection.getDocument(item.document, in: self.collection)
+                    try doc.put(item.data, version: item.version, type: item.type)
                     return doc
                 }
                 documents.insert(contentsOf: docs, at: index)

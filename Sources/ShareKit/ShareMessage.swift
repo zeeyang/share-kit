@@ -112,7 +112,7 @@ struct QueryMessage: Codable {
 
 enum ArrayChange: Codable {
     case move(from: Int, to: Int, howMany: Int)
-    case insert(index: Int, values: [JSON])
+    case insert(index: Int, values: [VersionedDocumentData])
     case remove(index: Int, howMany: Int)
 
     enum ArrayChangeType: String, Codable {
@@ -139,7 +139,7 @@ enum ArrayChange: Codable {
             self = .move(from: from, to: to, howMany: howMany)
         case .insert:
             let index = try values.decode(Int.self, forKey: .index)
-            let newValues = try values.decode([JSON].self, forKey: .values)
+            let newValues = try values.decode([VersionedDocumentData].self, forKey: .values)
             self = .insert(index: index, values: newValues)
         case .remove:
             let index = try values.decode(Int.self, forKey: .index)
