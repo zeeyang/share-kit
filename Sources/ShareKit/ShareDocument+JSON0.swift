@@ -1,8 +1,10 @@
 import SwiftyJSON
 
 extension ShareDocument {
-    public func set(number value: Double, at path: JSONSubscriptType...) throws {
-        let currentValue = json[path].doubleValue
+    public func set<T>(number value: T, at path: JSONSubscriptType...) throws where T: AdditiveArithmetic {
+        guard let currentValue = json[path].rawValue as? T else {
+            throw ShareDocumentError.decodeDocumentData
+        }
         let amount = value - currentValue
         let operationJSON = JSON([
             OperationKey.path: path,
