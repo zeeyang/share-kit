@@ -61,7 +61,7 @@ extension ShareDocument {
         let operationJSON = JSON([
             OperationKey.path: path,
             OperationKey.subtype: OperationalTransformSubtype.TEXT0.rawValue,
-            OperationKey.operation: stringOperation
+            OperationKey.operation: [stringOperation]
         ])
         try apply(operations: [operationJSON])
         send(.update(operations: [operationJSON]))
