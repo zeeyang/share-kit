@@ -2,6 +2,7 @@ import SwiftyJSON
 
 extension ShareDocument {
     public func set<T>(number value: T, at path: JSONSubscriptType...) throws where T: AdditiveArithmetic {
+        try assertJSON0()
         guard let currentValue = json[path].rawValue as? T else {
             throw ShareDocumentError.decodeDocumentData
         }
@@ -15,6 +16,7 @@ extension ShareDocument {
     }
 
     public func change<T>(amount: T, at path: JSONSubscriptType...) throws where T: AdditiveArithmetic {
+        try assertJSON0()
         let operationJSON = JSON([
             OperationKey.path: path,
             OperationKey.numberAdd: amount
@@ -24,6 +26,7 @@ extension ShareDocument {
     }
 
     public func set(object: JSON, at path: JSONSubscriptType...) throws {
+        try assertJSON0()
         guard json[path] != object else {
             return
         }
@@ -50,8 +53,7 @@ extension ShareDocument {
     }
 
     public func set(string value: String, at path: JSONSubscriptType...) throws {
-        // TODO throw is document is in invalid or delete state
-        // TODO throw if document type is not JSON0
+        try assertJSON0()
         let currentValue = json[path].stringValue
         guard let stringOperation = stringDiff(currentValue, value) else {
             return
@@ -66,6 +68,7 @@ extension ShareDocument {
     }
 
     public func removeObject(at path: JSONSubscriptType...) throws {
+        try assertJSON0()
         guard let endPath = path.last else {
             throw OperationalTransformError.invalidPath
         }
@@ -80,5 +83,14 @@ extension ShareDocument {
         }
         try apply(operations: [operationJSON])
         send(.update(operations: [operationJSON]))
+    }
+
+    private func assertJSON0() throws {
+        guard transformer.type == .JSON0 else {
+            throw ShareDocumentError.transformType
+        }
+        guard state != .deleted else {
+            throw ShareDocumentError.documentState
+        }
     }
 }

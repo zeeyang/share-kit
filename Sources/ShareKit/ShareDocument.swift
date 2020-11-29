@@ -13,6 +13,8 @@ public struct DocumentID: Hashable {
 
 final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     enum ShareDocumentError: Error {
+        case transformType
+        case documentState
         case decodeDocumentData
         case operationalTransformType
         case applyTransform
