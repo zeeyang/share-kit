@@ -25,6 +25,10 @@ final public class ShareQueryCollection<Entity> where Entity: Codable {
         self.connection = connection
     }
 
+    public func create(_ data: Entity) throws -> ShareDocument<Entity> {
+        return try connection.create(data, in: collection)
+    }
+
     func subscribe(_ queryID: UInt) {
         let message = QuerySubscribeMessage(queryID: queryID, query: query, collection: collection)
         connection.send(message: message) // TODO update query collection state

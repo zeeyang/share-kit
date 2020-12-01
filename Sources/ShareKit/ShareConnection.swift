@@ -38,7 +38,14 @@ final public class ShareConnection {
         initiateSocket()
     }
 
-    public func getDocument<Entity>(_ key: String, in collection: String) throws -> ShareDocument<Entity> {
+    public func create<Entity>(_ data: Entity, in collection: String) throws -> ShareDocument<Entity> where Entity: Codable {
+        let key = UUID().uuidString
+        let document: ShareDocument<Entity> = try getDocument(key, in: collection)
+        try document.create(data)
+        return document
+    }
+
+    public func getDocument<Entity>(_ key: String, in collection: String) throws -> ShareDocument<Entity> where Entity: Codable {
         let documentID = DocumentID(key, in: collection)
         let document: ShareDocument<Entity>
         if documentStore[documentID] != nil {
@@ -53,13 +60,13 @@ final public class ShareConnection {
         return document
     }
 
-    public func subscribe<Entity>(document: String, in collection: String) throws -> ShareDocument<Entity> {
+    public func subscribe<Entity>(document: String, in collection: String) throws -> ShareDocument<Entity> where Entity: Codable {
         let document: ShareDocument<Entity> = try getDocument(document, in: collection)
         document.subscribe()
         return document
     }
 
-    public func subscribe<Entity>(query: JSON, in collection: String) throws -> ShareQueryCollection<Entity> {
+    public func subscribe<Entity>(query: JSON, in collection: String) throws -> ShareQueryCollection<Entity> where Entity: Codable {
         let collection: ShareQueryCollection<Entity> = ShareQueryCollection(query, in: collection, connection: self)
         collection.subscribe(querySequence)
         queryCollectionStore[querySequence] = collection

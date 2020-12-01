@@ -36,6 +36,10 @@ class GameViewModel: ObservableObject {
     init(_ players: [PlayerViewModel]) {
         self.players = players
     }
+
+    func createPlayer() {
+        try? playerCollection?.create(Player())
+    }
 }
 
 class PlayerViewModel: ObservableObject, Identifiable {

@@ -12,6 +12,14 @@ struct ContentView: View {
                         PlayerCell(player: $0)
                     }
                 }
+                Button(action: {
+                    model.createPlayer()
+                }) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill").resizable().frame(width: 20, height: 20)
+                        Text("New Player")
+                    }
+                }.padding()
             }.navigationBarTitle("Leaderboard 🧪")
         }
     }

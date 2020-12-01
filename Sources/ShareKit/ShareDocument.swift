@@ -59,7 +59,7 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     public func create(_ data: Entity, type: OperationalTransformType? = nil) throws {
         let jsonData = try JSONEncoder().encode(data)
         let json = JSON(jsonData)
-        try put(json, version: 1, type: type)
+        try put(json, version: 0, type: type)
         send(.create(type: type ?? connection.defaultTransformer.type, data: json))
     }
 
@@ -111,7 +111,7 @@ extension ShareDocument {
 
     // Send ops to server or append to ops queue
     func send(_ operation: OperationData) {
-        guard inflightOperation == nil, let source = connection.clientID else {
+        guard inflightOperation == nil, let source = connection.clientID, let version = version else {
             if let queueItem = queuedOperations.first,
                case .update(let queueOps) = queueItem,
                case .update(let currentOps) = operation {
@@ -132,7 +132,7 @@ extension ShareDocument {
             document: id.key,
             source: source,
             data: operation,
-            version: version ?? 0
+            version: version
         )
         connection.send(message: msg).whenComplete { result in
             switch result {
