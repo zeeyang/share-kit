@@ -40,6 +40,13 @@ class GameViewModel: ObservableObject {
     func createPlayer() {
         try? playerCollection?.create(Player())
     }
+
+    func deletePlayer(at indexSet: IndexSet) {
+        indexSet
+            .lazy
+            .compactMap { self.playerCollection?.documents[$0] }
+            .forEach { $0.delete() }
+    }
 }
 
 class PlayerViewModel: ObservableObject, Identifiable {

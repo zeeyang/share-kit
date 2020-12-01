@@ -10,6 +10,8 @@ struct ContentView: View {
                 List {
                     ForEach(model.players) {
                         PlayerCell(player: $0)
+                    }.onDelete {
+                        self.model.deletePlayer(at: $0)
                     }
                 }
                 Button(action: {

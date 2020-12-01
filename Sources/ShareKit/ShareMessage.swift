@@ -191,7 +191,7 @@ struct OperationMessage: Codable {
         case version = "v"
         case create
         case operations = "op"
-        case delete
+        case delete = "del"
     }
 
     init(collection: String, document: String, source: String, data: OperationData, version: UInt) {
