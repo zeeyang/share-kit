@@ -37,8 +37,8 @@ class GameViewModel: ObservableObject {
         self.players = players
     }
 
-    func createPlayer() {
-        try? playerCollection?.create(Player())
+    func createPlayer() -> ShareDocument<Player>? {
+        return try? playerCollection?.create(Player())
     }
 
     func deletePlayer(at indexSet: IndexSet) {
