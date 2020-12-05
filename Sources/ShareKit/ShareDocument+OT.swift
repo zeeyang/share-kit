@@ -13,15 +13,15 @@ protocol OperationalTransformDocument {
 extension ShareDocument: OperationalTransformDocument {
     // Shift inflightOps into queuedOps for re-send
     func pause() {
-        state = .paused
+        try? trigger(event: .pause)
         if let inflight = inflightOperation {
             queuedOperations.append(inflight)
             inflightOperation = nil
         }
     }
 
-    // Drain ops queue after reconnect
     func resume() {
+        try? trigger(event: .resume)
         guard let group = queuedOperations.popLast() else {
             return
         }
@@ -38,10 +38,10 @@ extension ShareDocument: OperationalTransformDocument {
         }
 
         if let json = data {
+            try trigger(event: .put)
             try update(json: json)
-            state = .ready
         } else {
-            state = .deleted
+            try trigger(event: .delete)
         }
 
         try update(version: version, validateSequence: false)
@@ -57,7 +57,7 @@ extension ShareDocument: OperationalTransformDocument {
             try update(version: version + 1, validateSequence: true)
             try apply(operations: ops)
         case .delete:
-            state = .deleted
+            try trigger(event: .delete)
         }
     }
 

@@ -15,20 +15,13 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     enum ShareDocumentError: Error {
         case transformType
         case documentState
+        case stateEvent
         case decodeDocumentData
         case operationalTransformType
         case applyTransform
         case subscription
         case operationVersion
         case operationAck
-    }
-
-    enum State: Equatable {
-        case paused
-        case pending
-        case ready
-        case deleted
-        case invalid(ShareDocumentError)
     }
 
     public let id: DocumentID
@@ -38,7 +31,7 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     public private(set) var version: UInt?
     public private(set) var json = JSON()
 
-    var state: State //TODO private setter and state transitions
+    private(set) var state: State
 
     var documentTransformer: OperationalTransformer.Type?
     var transformer: OperationalTransformer.Type {
@@ -53,7 +46,7 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     init(_ documentID: DocumentID, connection: ShareConnection) {
         self.id = documentID
         self.connection = connection
-        self.state = .paused
+        self.state = .blank
     }
 
     public func create(_ data: Entity, type: OperationalTransformType? = nil) throws {
@@ -64,12 +57,12 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
     }
 
     public func delete() {
-        state = .deleted
-        send(.delete(isDeleted: true))
+        try? trigger(event: .delete)
+        self.send(.delete(isDeleted: true))
     }
 
     public func subscribe() {
-        guard state == .paused else {
+        guard state == .blank else {
             print("Document subscribe canceled: \(state)")
             return
         }
@@ -77,17 +70,69 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
         connection.send(message: msg).whenComplete { result in
             switch result {
             case .success:
-                self.state = .pending
+                try? self.trigger(event: .fetch)
             case .failure:
-                self.state = .invalid(.subscription)
+                try? self.trigger(event: .fail)
             }
         }
     }
 }
 
 extension ShareDocument {
+    enum State: Equatable {
+        case blank
+        case paused
+        case pending
+        case ready
+        case deleted
+        case fetchError
+    }
+
+    enum Event {
+        case fetch
+        case put
+        case apply
+        case pause
+        case resume
+        case delete
+        case fail
+    }
+
+    typealias Transition = () throws -> State
+
+    func makeTransition(for event: Event) throws -> Transition {
+        switch (state, event) {
+        case (.blank, .fetch):
+            return { .pending }
+        case (.blank, .put), (.pending, .put):
+            return { .ready }
+        case (.ready, .pause):
+            return { .paused }
+        case (.paused, .resume), (.ready, .resume):
+            return { .ready }
+        case (.paused, .apply):
+            return { .paused }
+        case (.ready, .apply):
+            return { .ready }
+        case (.ready, .delete), (.paused, .delete):
+            return { .deleted }
+        case (.blank, .fail), (.pending, .fail):
+            return { .fetchError }
+        default:
+            throw ShareDocumentError.stateEvent
+        }
+    }
+
+    func trigger(event: Event) throws {
+        let transition = try makeTransition(for: event)
+        state = try transition()
+    }
+}
+
+extension ShareDocument {
     // Apply raw JSON operation with OT transformer
     func apply(operations: [JSON]) throws {
+        try trigger(event: .apply)
         let newJSON = try transformer.apply(operations, to: self.json)
         try update(json: newJSON)
     }
