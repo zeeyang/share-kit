@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import SwiftyJSON
 
 public struct DocumentID: Hashable {
@@ -26,8 +27,7 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
 
     public let id: DocumentID
 
-    @Published
-    public private(set) var data: Entity?
+    public private(set) var data: CurrentValueSubject<Entity?, Never>
     public private(set) var version: UInt?
     public private(set) var json = JSON()
 
@@ -47,6 +47,7 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
         self.id = documentID
         self.connection = connection
         self.state = .blank
+        self.data = CurrentValueSubject(nil)
     }
 
     public func create(_ data: Entity, type: OperationalTransformType? = nil) throws {
@@ -140,7 +141,7 @@ extension ShareDocument {
     // Update document JSON and cast to entity
     func update(json: JSON) throws {
         let jsonData = try json.rawData()
-        self.data = try JSONDecoder().decode(Entity.self, from: jsonData)
+        self.data.send(try JSONDecoder().decode(Entity.self, from: jsonData))
         self.json = json
     }
 

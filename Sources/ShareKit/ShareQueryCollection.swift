@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import NIO
 import SwiftyJSON
 
@@ -13,8 +14,7 @@ final public class ShareQueryCollection<Entity> where Entity: Codable {
     public let collection: String
     public let query: JSON
 
-    @Published
-    public private(set) var documents: [ShareDocument<Entity>] = []
+    public private(set) var documents = CurrentValueSubject<[ShareDocument<Entity>], Never>([])
 
     var cascadeSubscription = true
     private let connection: ShareConnection
@@ -43,7 +43,7 @@ extension ShareQueryCollection: OperationalTransformQuery {
             document.subscribe()
             return document
         }
-        documents = newDocuments
+        documents.send(newDocuments)
     }
 
     func sync(_ diffs: [ArrayChange]) throws {
@@ -51,9 +51,11 @@ extension ShareQueryCollection: OperationalTransformQuery {
             switch diff {
             case .move(let from, let to, let howMany):
                 let range = from..<(from + howMany)
-                let slice = documents[range]
-                documents.removeSubrange(range)
-                documents.insert(contentsOf: slice, at: to)
+                var changedDocuments = documents.value
+                let slice = changedDocuments[range]
+                changedDocuments.removeSubrange(range)
+                changedDocuments.insert(contentsOf: slice, at: to)
+                documents.send(changedDocuments)
             case .insert(let index, let values):
                 // TODO: cascade subscription
                 let docs: [ShareDocument<Entity>] = try values.map { item in
@@ -61,10 +63,14 @@ extension ShareQueryCollection: OperationalTransformQuery {
                     try doc.put(item.data, version: item.version, type: item.type)
                     return doc
                 }
-                documents.insert(contentsOf: docs, at: index)
+                var changedDocuments = documents.value
+                changedDocuments.insert(contentsOf: docs, at: index)
+                documents.send(changedDocuments)
             case .remove(let index, let howMany):
                 let range = index..<(index + howMany)
-                documents.removeSubrange(range)
+                var changedDocuments = documents.value
+                changedDocuments.removeSubrange(range)
+                documents.send(changedDocuments)
             }
         }
     }

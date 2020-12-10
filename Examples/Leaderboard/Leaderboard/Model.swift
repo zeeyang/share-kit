@@ -21,7 +21,7 @@ class GameViewModel: ObservableObject {
             guard let collection: ShareQueryCollection<Player> = try? connection.subscribe(query: ["$sort": ["score": -1]], in: "players") else {
                 return
             }
-            collection.$documents
+            collection.documents
                 .receive(on: RunLoop.main)
                 .map { documents in
                     self.playerBag.removeAll()
@@ -44,7 +44,7 @@ class GameViewModel: ObservableObject {
     func deletePlayer(at indexSet: IndexSet) {
         indexSet
             .lazy
-            .compactMap { self.playerCollection?.documents[$0] }
+            .compactMap { self.playerCollection?.documents.value[$0] }
             .forEach { $0.delete() }
     }
 }
@@ -62,12 +62,12 @@ class PlayerViewModel: ObservableObject, Identifiable {
     init(_ document: ShareDocument<Player>, bag: inout Set<AnyCancellable>) {
         self.id = document.id
         self.document = document
-        document.$data
+        document.data
             .compactMap { $0?.name }
             .receive(on: RunLoop.main)
             .assign(to: \.name, on: self)
             .store(in: &bag)
-        document.$data
+        document.data
             .compactMap { $0?.score }
             .receive(on: RunLoop.main)
             .assign(to: \.score, on: self)

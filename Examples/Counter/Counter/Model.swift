@@ -18,7 +18,7 @@ class CounterViewModel: ObservableObject {
             guard let document: ShareDocument<Counter> = try? connection.subscribe(document: "counter", in: "examples") else {
                 return
             }
-            document.$data
+            document.data
                 .compactMap { $0 }
                 .receive(on: RunLoop.main)
                 .assign(to: \.counter, on: self)
