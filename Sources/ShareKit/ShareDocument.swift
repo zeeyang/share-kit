@@ -105,7 +105,7 @@ extension ShareDocument {
         switch (state, event) {
         case (.blank, .fetch):
             return { .pending }
-        case (.blank, .put), (.pending, .put):
+        case (.blank, .put), (.pending, .put), (.ready, .put):
             return { .ready }
         case (.ready, .pause):
             return { .paused }
