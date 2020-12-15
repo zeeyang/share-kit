@@ -55,13 +55,14 @@ extension ShareDocument {
     public func set(string value: String, at path: JSONSubscriptType...) throws {
         try assertJSON0()
         let currentValue = json[path].stringValue
-        guard let stringOperation = stringDiff(currentValue, value) else {
+        let stringOperation = stringDiff(currentValue, value)
+        guard !stringOperation.isEmpty else {
             return
         }
         let operationJSON = JSON([
             OperationKey.path: path,
             OperationKey.subtype: OperationalTransformSubtype.TEXT0.rawValue,
-            OperationKey.operation: [stringOperation]
+            OperationKey.operation: stringOperation
         ])
         try apply(operations: [operationJSON])
         send(.update(operations: [operationJSON]))

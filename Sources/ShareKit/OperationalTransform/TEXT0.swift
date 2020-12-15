@@ -38,15 +38,15 @@ struct TEXT0Transformer: OperationalTransformer {
     }
 }
 
-func stringDiff(_ source: String, _ target: String) -> JSON? {
+func stringDiff(_ source: String, _ target: String) -> [JSON] {
     switch Array(source).diff(Array(target)) {
     case .equal:
-        return nil
+        return []
     case .insert(let start, let chars):
-        return ["p": start, "i": String(chars)]
+        return [["p": start, "i": String(chars)]]
     case .delete(let start, let chars):
-        return ["p": start, "d": String(chars)]
+        return [["p": start, "d": String(chars)]]
     case .replace(let start, let delete, let insert):
-        return ["p": start, "d": String(delete), "i": String(insert)]
+        return [["p": start, "d": String(delete)], ["p": start, "i": String(insert)]]
     }
 }
