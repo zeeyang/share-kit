@@ -87,4 +87,34 @@ struct JSON0Transformer: OperationalTransformer {
     static func append(_ operation: JSON, to previousOperations: [JSON]) -> [JSON] {
         return previousOperations + [operation]
     }
+
+    static func inverse(_ operations: [JSON]) throws -> [JSON] {
+        return try operations.reversed().map { operation in
+            var newOperation = JSON()
+            newOperation[OperationKey.path] = operation[OperationKey.path]
+            if operation[OperationKey.objectInsert].exists() {
+                newOperation[OperationKey.objectDelete] = operation[OperationKey.objectInsert]
+            }
+            if operation[OperationKey.objectDelete].exists() {
+                newOperation[OperationKey.objectInsert] = operation[OperationKey.objectDelete]
+            }
+            if operation[OperationKey.listInsert].exists() {
+                newOperation[OperationKey.listDelete] = operation[OperationKey.listInsert]
+            }
+            if operation[OperationKey.listDelete].exists() {
+                newOperation[OperationKey.listInsert] = operation[OperationKey.listDelete]
+            }
+            if operation[OperationKey.numberAdd].exists() {
+                newOperation[OperationKey.numberAdd] = JSON(-operation[OperationKey.numberAdd].doubleValue)
+            }
+            if operation[OperationKey.subtype].exists() {
+                guard let subtypeKey = OperationalTransformSubtype(rawValue: operation[OperationKey.subtype].stringValue), let subtypeTransformer = JSON0Subtypes[subtypeKey] else {
+                    throw OperationalTransformError.unsupportedSubtype
+                }
+                newOperation[OperationKey.subtype] = operation[OperationKey.subtype]
+                newOperation[OperationKey.operation].arrayObject = try subtypeTransformer.inverse(operation[OperationKey.operation].arrayValue)
+            }
+            return newOperation
+        }
+    }
 }

@@ -36,6 +36,20 @@ struct TEXT0Transformer: OperationalTransformer {
     static func append(_ operation: JSON, to previousOperations: [JSON]) -> [JSON] {
         return previousOperations + [operation]
     }
+
+    static func inverse(_ operations: [JSON]) throws -> [JSON] {
+        return operations.reversed().map { operation in
+            var newOperation = operation
+            newOperation[OperationKey.path] = operation[OperationKey.path]
+            if operation[OperationKey.insert].exists() {
+                newOperation[OperationKey.delete] = operation[OperationKey.insert]
+            }
+            if operation[OperationKey.delete].exists() {
+                newOperation[OperationKey.insert] = operation[OperationKey.delete]
+            }
+            return newOperation
+        }
+    }
 }
 
 func stringDiff(_ source: String, _ target: String) -> [JSON] {
