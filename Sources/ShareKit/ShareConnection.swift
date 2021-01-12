@@ -1,7 +1,5 @@
 import Foundation
-import NIO
 import WebSocketKit
-import SwiftyJSON
 
 final public class ShareConnection {
     enum ShareConnectionError: Swift.Error, LocalizedError {
@@ -66,7 +64,7 @@ final public class ShareConnection {
         return document
     }
 
-    public func subscribe<Entity>(query: JSON, in collection: String) throws -> ShareQueryCollection<Entity> where Entity: Codable {
+    public func subscribe<Entity>(query: AnyCodable, in collection: String) throws -> ShareQueryCollection<Entity> where Entity: Codable {
         let collection: ShareQueryCollection<Entity> = ShareQueryCollection(query, in: collection, connection: self)
         collection.subscribe(querySequence)
         queryCollectionStore[querySequence] = collection

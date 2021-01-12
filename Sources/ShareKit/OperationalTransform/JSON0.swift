@@ -1,5 +1,3 @@
-import SwiftyJSON
-
 let JSON0Subtypes = [
     OperationalTransformSubtype.TEXT0: TEXT0Transformer.self
 ]
@@ -7,10 +5,11 @@ let JSON0Subtypes = [
 struct JSON0Transformer: OperationalTransformer {
     static let type = OperationalTransformType.JSON0
 
-    static func apply(_ operations: [JSON], to json: JSON) throws -> JSON {
+    static func apply(_ operations: [AnyCodable], to json: AnyCodable) throws -> AnyCodable {
         var json = json
         for operation in operations {
-            let path: [JSONSubscriptType] = try operation[OperationKey.path].arrayValue.map { token in
+            let path = operation[OperationKey.path].array ?? []
+            let pathSubscript: [AnyCodableSubscriptType] = try path.map { token in
                 if let pathKey = token.string {
                     return pathKey
                 } else if let pathIndex = token.int {
@@ -19,64 +18,78 @@ struct JSON0Transformer: OperationalTransformer {
                     throw OperationalTransformError.invalidPath
                 }
             }
-            guard !path.isEmpty else {
+            guard !pathSubscript.isEmpty else {
                 throw OperationalTransformError.invalidPath
             }
-            if operation[OperationKey.objectDelete].exists() || operation[OperationKey.objectInsert].exists() {
-                if operation[OperationKey.objectDelete].exists() {
-                    guard operation[OperationKey.objectDelete] == json[path] else {
-                        throw OperationalTransformError.oldDataMismatch
-                    }
-                    var parentPath = path
-                    guard let lastPath = parentPath.popLast(), case let .key(key) = lastPath.jsonKey else {
-                        throw OperationalTransformError.invalidPath
-                    }
-                    if parentPath.isEmpty {
-                        json.dictionaryObject?.removeValue(forKey: key)
-                    } else {
-                        json[parentPath].dictionaryObject?.removeValue(forKey: key)
-                    }
-                }
-                if operation[OperationKey.objectInsert].exists() {
-                    guard !json[path].exists() else {
-                        throw OperationalTransformError.oldDataMismatch
-                    }
-                    json[path] = operation[OperationKey.objectInsert]
-                }
-            } else if operation[OperationKey.listInsert].exists() || operation[OperationKey.listDelete].exists() {
-                var parentPath = path
-                guard let lastKey = parentPath.popLast(), case let .index(index) = lastKey.jsonKey else {
+            if operation[OperationKey.objectDelete] != .undefined || operation[OperationKey.objectInsert] != .undefined {
+                var parentPath = pathSubscript
+                guard let lastPath = parentPath.popLast(), case let .member(key) = lastPath.anyCodableKey else {
                     throw OperationalTransformError.invalidPath
                 }
-                guard let arrayCount = json[parentPath].arrayObject?.count else {
-                    throw OperationalTransformError.invalidJSONData
+                guard case .dictionary(var dictionary) = json[parentPath] else {
+                    throw OperationalTransformError.invalidPath
                 }
-                if operation[OperationKey.listDelete].exists() {
-                    guard index >= 0, index < arrayCount else {
-                        throw OperationalTransformError.invalidPath
-                    }
-                    guard operation[OperationKey.listDelete] == json[path] else {
+                if operation[OperationKey.objectDelete] != .undefined {
+                    guard operation[OperationKey.objectDelete] == json[pathSubscript] else {
                         throw OperationalTransformError.oldDataMismatch
                     }
-                    json[parentPath].arrayObject?.remove(at: index)
+                    dictionary.removeValue(forKey: key)
+                    json[parentPath] = .dictionary(dictionary)
                 }
-                if operation[OperationKey.listInsert].exists() {
-                    guard index >= 0, index <= arrayCount else {
+                if operation[OperationKey.objectInsert] != .undefined {
+                    guard json[pathSubscript] == .undefined else {
+                        throw OperationalTransformError.oldDataMismatch
+                    }
+                    json[pathSubscript] = operation[OperationKey.objectInsert]
+                }
+            } else if operation[OperationKey.listInsert] != .undefined || operation[OperationKey.listDelete] != .undefined {
+                var parentPath = pathSubscript
+                guard let lastKey = parentPath.popLast(), case let .index(index) = lastKey.anyCodableKey else {
+                    throw OperationalTransformError.invalidPath
+                }
+                guard case .array(var array) = json[parentPath] else {
+                    throw OperationalTransformError.invalidPath
+                }
+                if operation[OperationKey.listDelete] != .undefined {
+                    guard index >= 0, index < array.count else {
+                        throw OperationalTransformError.invalidPath
+                    }
+                    guard operation[OperationKey.listDelete] == json[pathSubscript] else {
+                        throw OperationalTransformError.oldDataMismatch
+                    }
+                    array.remove(at: index)
+                    json[parentPath] = .array(array)
+                }
+                if operation[OperationKey.listInsert] != .undefined {
+                    guard index >= 0, index <= array.count else {
                         throw OperationalTransformError.invalidPath
                     }
                     let newData = operation[OperationKey.listInsert]
-                    json[parentPath].arrayObject?.insert(newData, at: index)
+                    array.insert(newData, at: index)
+                    json[parentPath] = .array(array)
                 }
-            } else if let numberAdd = operation[OperationKey.numberAdd].double {
-                guard let currentValue = json[path].double else {
-                    throw OperationalTransformError.oldDataMismatch
+            } else if operation[OperationKey.numberAdd] != .undefined {
+                let numberAdd = operation[OperationKey.numberAdd]
+                switch numberAdd {
+                case .int(let int):
+                    guard let currentValue = json[pathSubscript].int else {
+                        throw OperationalTransformError.oldDataMismatch
+                    }
+                    json[pathSubscript] = .int(currentValue + int)
+                case .decimal(let decimal):
+                    guard let currentValue = json[pathSubscript].decimal else {
+                        throw OperationalTransformError.oldDataMismatch
+                    }
+                    json[pathSubscript] = .decimal(currentValue + decimal)
+                default:
+                    throw OperationalTransformError.invalidJSONData
                 }
-                json[path].double = currentValue + numberAdd
-            } else if operation[OperationKey.subtype].exists() {
-                guard let subtypeKey = OperationalTransformSubtype(rawValue: operation[OperationKey.subtype].stringValue), let subtypeTransformer = JSON0Subtypes[subtypeKey] else {
+            } else if operation[OperationKey.subtype] != .undefined {
+                guard let subtypeKey = OperationalTransformSubtype(rawValue: operation[OperationKey.subtype].string ?? ""), let subtypeTransformer = JSON0Subtypes[subtypeKey] else {
                     throw OperationalTransformError.unsupportedSubtype
                 }
-                json[path] = try subtypeTransformer.apply(operation[OperationKey.operation].arrayValue, to: json[path])
+                let transform = try subtypeTransformer.apply(operation[OperationKey.operation].array ?? [], to: json[pathSubscript])
+                json[pathSubscript] = transform
             } else {
                 throw OperationalTransformError.unsupportedOperation
             }
@@ -84,35 +97,40 @@ struct JSON0Transformer: OperationalTransformer {
         return json
     }
 
-    static func append(_ operation: JSON, to previousOperations: [JSON]) -> [JSON] {
-        return previousOperations + [operation]
-    }
-
-    static func inverse(_ operations: [JSON]) throws -> [JSON] {
+    static func inverse(_ operations: [AnyCodable]) throws -> [AnyCodable] {
         return try operations.reversed().map { operation in
-            var newOperation = JSON()
+            var newOperation = AnyCodable()
             newOperation[OperationKey.path] = operation[OperationKey.path]
-            if operation[OperationKey.objectInsert].exists() {
+            if operation[OperationKey.objectInsert] != .undefined {
                 newOperation[OperationKey.objectDelete] = operation[OperationKey.objectInsert]
             }
-            if operation[OperationKey.objectDelete].exists() {
+            if operation[OperationKey.objectDelete] != .undefined {
                 newOperation[OperationKey.objectInsert] = operation[OperationKey.objectDelete]
             }
-            if operation[OperationKey.listInsert].exists() {
+            if operation[OperationKey.listInsert] != .undefined {
                 newOperation[OperationKey.listDelete] = operation[OperationKey.listInsert]
             }
-            if operation[OperationKey.listDelete].exists() {
+            if operation[OperationKey.listDelete] != .undefined {
                 newOperation[OperationKey.listInsert] = operation[OperationKey.listDelete]
             }
-            if operation[OperationKey.numberAdd].exists() {
-                newOperation[OperationKey.numberAdd] = JSON(-operation[OperationKey.numberAdd].doubleValue)
+            if operation[OperationKey.numberAdd] != .undefined {
+                let numberAdd = operation[OperationKey.numberAdd]
+                switch numberAdd {
+                case .int(let int):
+                    newOperation[OperationKey.numberAdd] = .int(-int)
+                case .decimal(let decimal):
+                    newOperation[OperationKey.numberAdd] = .decimal(-decimal)
+                default:
+                    throw OperationalTransformError.invalidJSONData
+                }
             }
-            if operation[OperationKey.subtype].exists() {
-                guard let subtypeKey = OperationalTransformSubtype(rawValue: operation[OperationKey.subtype].stringValue), let subtypeTransformer = JSON0Subtypes[subtypeKey] else {
+            if operation[OperationKey.subtype] != .undefined {
+                guard let subtypeKey = OperationalTransformSubtype(rawValue: operation[OperationKey.subtype].string ?? ""), let subtypeTransformer = JSON0Subtypes[subtypeKey] else {
                     throw OperationalTransformError.unsupportedSubtype
                 }
                 newOperation[OperationKey.subtype] = operation[OperationKey.subtype]
-                newOperation[OperationKey.operation].arrayObject = try subtypeTransformer.inverse(operation[OperationKey.operation].arrayValue)
+                let subOperations = try subtypeTransformer.inverse(operation[OperationKey.operation].array ?? [])
+                newOperation[OperationKey.operation] = .array(subOperations)
             }
             return newOperation
         }

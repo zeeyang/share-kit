@@ -15,9 +15,11 @@ class GameViewModel: ObservableObject {
 
     private var gameBag = Set<AnyCancellable>()
     private var playerBag = Set<AnyCancellable>()
+    private var client: ShareClient?
 
     init() {
-        ShareClient(eventLoopGroupProvider: .createNew).connect("ws://localhost:8080") { connection in
+        let client = ShareClient(eventLoopGroupProvider: .createNew)
+        client.connect("ws://localhost:8080") { connection in
             guard let collection: ShareQueryCollection<Player> = try? connection.subscribe(query: ["$sort": ["score": -1]], in: "players") else {
                 return
             }
@@ -31,10 +33,15 @@ class GameViewModel: ObservableObject {
                 .store(in: &self.gameBag)
             self.playerCollection = collection
         }
+        self.client = client
     }
 
     init(_ players: [PlayerViewModel]) {
         self.players = players
+    }
+
+    deinit {
+        try? client?.syncShutdown()
     }
 
     func createPlayer() -> ShareDocument<Player>? {
@@ -62,12 +69,12 @@ class PlayerViewModel: ObservableObject, Identifiable {
     init(_ document: ShareDocument<Player>, bag: inout Set<AnyCancellable>) {
         self.id = document.id
         self.document = document
-        document.data
+        document.value
             .compactMap { $0?.name }
             .receive(on: RunLoop.main)
             .assign(to: \.name, on: self)
             .store(in: &bag)
-        document.data
+        document.value
             .compactMap { $0?.score }
             .receive(on: RunLoop.main)
             .assign(to: \.score, on: self)
@@ -75,7 +82,13 @@ class PlayerViewModel: ObservableObject, Identifiable {
         $name
             .dropFirst()
             .sink { value in
-                try? document.set(string: value, at: "name")
+                do {
+                    try document.change {
+                        try $0.name.set(value)
+                    }
+                } catch {
+                    print(error)
+                }
             }
             .store(in: &bag)
     }
@@ -86,11 +99,13 @@ class PlayerViewModel: ObservableObject, Identifiable {
         self.score = player.score
     }
 
-    func bumpScore(_ score: Int = 5) throws {
+    func bumpScore(_ increment: Int = 5) throws {
         if let document = document {
-            try document.change(amount: score, at: "score")
+            try document.change {
+                try $0.score.set(score + increment)
+            }
         } else {
-            self.score += score
+            self.score += increment
         }
     }
 }

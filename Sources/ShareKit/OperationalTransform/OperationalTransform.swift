@@ -1,5 +1,3 @@
-import SwiftyJSON
-
 let OperationalTransformTypes: [OperationalTransformType: OperationalTransformer.Type] = [
     OperationalTransformType.JSON0: JSON0Transformer.self,
     OperationalTransformType.TEXT0: TEXT0Transformer.self
@@ -7,9 +5,8 @@ let OperationalTransformTypes: [OperationalTransformType: OperationalTransformer
 
 protocol OperationalTransformer {
     static var type: OperationalTransformType { get }
-    static func apply(_ operations: [JSON], to json: JSON) throws -> JSON
-    static func append(_ operations: JSON, to previousOperations: [JSON]) -> [JSON]
-    static func inverse(_ operations: [JSON]) throws -> [JSON]
+    static func apply(_ operations: [AnyCodable], to data: AnyCodable) throws -> AnyCodable
+    static func inverse(_ operations: [AnyCodable]) throws -> [AnyCodable]
 }
 
 enum OperationalTransformError: Error {

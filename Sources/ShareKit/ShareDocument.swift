@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import SwiftyJSON
 
 public struct DocumentID: Hashable {
     let key: String
@@ -27,9 +26,9 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
 
     public let id: DocumentID
 
-    public private(set) var data: CurrentValueSubject<Entity?, Never>
+    public private(set) var value: CurrentValueSubject<Entity?, Never>
     public private(set) var version: UInt?
-    public private(set) var json = JSON()
+    private var data: AnyCodable?
 
     private(set) var state: State
 
@@ -47,12 +46,12 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
         self.id = documentID
         self.connection = connection
         self.state = .blank
-        self.data = CurrentValueSubject(nil)
+        self.value = CurrentValueSubject(nil)
     }
 
-    public func create(_ data: Entity, type: OperationalTransformType? = nil) throws {
-        let jsonData = try JSONEncoder().encode(data)
-        let json = JSON(jsonData)
+    public func create(_ entity: Entity, type: OperationalTransformType? = nil) throws {
+        let jsonData = try JSONEncoder().encode(entity)
+        let json = try AnyCodable(data: jsonData)
         try put(json, version: 0, type: type)
         send(.create(type: type ?? connection.defaultTransformer.type, data: json))
     }
@@ -76,6 +75,21 @@ final public class ShareDocument<Entity>: Identifiable where Entity: Codable {
                 try? self.trigger(event: .fail)
             }
         }
+    }
+
+    public func change(onChange: (JSON0Proxy) throws -> Void) throws {
+        guard let data = data else {
+            return
+        }
+        let transaction = Transaction()
+        let proxy = JSON0Proxy(path: [], data: data, transaction: transaction)
+        try onChange(proxy)
+
+        guard !transaction.operations.isEmpty else {
+            return
+        }
+        try apply(operations: transaction.operations)
+        send(.update(operations: transaction.operations))
     }
 }
 
@@ -132,17 +146,20 @@ extension ShareDocument {
 
 extension ShareDocument {
     // Apply raw JSON operation with OT transformer
-    func apply(operations: [JSON]) throws {
+    func apply(operations: [AnyCodable]) throws {
+        guard let data = self.data else {
+            return
+        }
         try trigger(event: .apply)
-        let newJSON = try transformer.apply(operations, to: self.json)
+        let newJSON = try transformer.apply(operations, to: data)
         try update(json: newJSON)
     }
 
     // Update document JSON and cast to entity
-    func update(json: JSON) throws {
-        let jsonData = try json.rawData()
-        self.data.send(try JSONDecoder().decode(Entity.self, from: jsonData))
-        self.json = json
+    func update(json: AnyCodable) throws {
+        let data = try JSONEncoder().encode(json)
+        self.value.send(try JSONDecoder().decode(Entity.self, from: data))
+        self.data = json
     }
 
     // Update document version and validate version sequence
@@ -158,19 +175,7 @@ extension ShareDocument {
     // Send ops to server or append to ops queue
     func send(_ operation: OperationData) {
         guard inflightOperation == nil, let source = connection.clientID, let version = version else {
-            if let queueItem = queuedOperations.first,
-               case .update(let queueOps) = queueItem,
-               case .update(let currentOps) = operation {
-                // Merge with last op group at end of queue
-                var newOps = queueOps
-                for operation in currentOps {
-                    newOps = transformer.append(operation, to: newOps)
-                }
-                self.queuedOperations[0] = .update(operations: newOps)
-            } else {
-                // Enqueue op group
-                self.queuedOperations.insert(operation, at: 0)
-            }
+            queuedOperations.insert(operation, at: 0)
             return
         }
         let msg = OperationMessage(

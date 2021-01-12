@@ -1,5 +1,4 @@
 import Foundation
-import SwiftyJSON
 
 public enum OperationalTransformType: String, Codable {
     case JSON0 = "http://sharejs.org/types/JSONv0"
@@ -61,7 +60,7 @@ struct SubscribeMessage: Codable {
 struct QuerySubscribeMessage: Codable {
     var action = MessageAction.querySubscribe
     var queryID: UInt
-    var query: JSON?
+    var query: AnyCodable?
     var collection: String?
     var data: [VersionedDocumentData]?
 
@@ -77,7 +76,7 @@ struct QuerySubscribeMessage: Codable {
 struct VersionedDocumentData: Codable {
     var document: String
     var version: UInt
-    var data: JSON?
+    var data: AnyCodable?
     var type: OperationalTransformType?
 
     enum CodingKeys: String, CodingKey {
@@ -89,7 +88,7 @@ struct VersionedDocumentData: Codable {
 }
 
 struct VersionedData: Codable {
-    var data: JSON?
+    var data: AnyCodable?
     var version: UInt
 
     enum CodingKeys: String, CodingKey {
@@ -171,7 +170,7 @@ enum ArrayChange: Codable {
 struct OperationMessage: Codable {
     struct CreateData: Codable {
         var type: OperationalTransformType
-        var data: JSON
+        var data: AnyCodable
     }
 
     var action = MessageAction.operation
@@ -212,7 +211,7 @@ struct OperationMessage: Codable {
         version = try values.decode(UInt.self, forKey: .version)
         sequence = try values.decode(UInt.self, forKey: .sequence)
 
-        if let updateData = try? values.decode([JSON].self, forKey: .operations) {
+        if let updateData = try? values.decode([AnyCodable].self, forKey: .operations) {
             data = .update(operations: updateData)
         } else if let createData = try? values.decode(CreateData.self, forKey: .create) {
             data = .create(type: createData.type, data: createData.data)
@@ -247,8 +246,8 @@ struct OperationMessage: Codable {
 }
 
 enum OperationData {
-    case create(type: OperationalTransformType, data: JSON)
-    case update(operations: [JSON])
+    case create(type: OperationalTransformType, data: AnyCodable)
+    case update(operations: [AnyCodable])
     case delete(isDeleted: Bool)
 }
 

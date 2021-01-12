@@ -1,10 +1,8 @@
-import SwiftyJSON
-
 struct TEXT0Transformer: OperationalTransformer {
     static let type = OperationalTransformType.TEXT0
 
-    static func apply(_ operations: [JSON], to json: JSON) throws -> JSON {
-        var characters = Array(json.stringValue)
+    static func apply(_ operations: [AnyCodable], to data: AnyCodable) throws -> AnyCodable {
+        var characters = Array(data.string ?? "")
         for operation in operations {
             guard let startIndex = operation[OperationKey.path].int else {
                 throw OperationalTransformError.invalidPath
@@ -30,21 +28,17 @@ struct TEXT0Transformer: OperationalTransformer {
                 characters = Array(prefix + suffix)
             }
         }
-        return JSON(String(characters))
+        return .string(String(characters))
     }
 
-    static func append(_ operation: JSON, to previousOperations: [JSON]) -> [JSON] {
-        return previousOperations + [operation]
-    }
-
-    static func inverse(_ operations: [JSON]) throws -> [JSON] {
+    static func inverse(_ operations: [AnyCodable]) throws -> [AnyCodable] {
         return operations.reversed().map { operation in
             var newOperation = operation
             newOperation[OperationKey.path] = operation[OperationKey.path]
-            if operation[OperationKey.insert].exists() {
+            if operation[OperationKey.insert] != .undefined {
                 newOperation[OperationKey.delete] = operation[OperationKey.insert]
             }
-            if operation[OperationKey.delete].exists() {
+            if operation[OperationKey.delete] != .undefined {
                 newOperation[OperationKey.insert] = operation[OperationKey.delete]
             }
             return newOperation
@@ -52,7 +46,7 @@ struct TEXT0Transformer: OperationalTransformer {
     }
 }
 
-func stringDiff(_ source: String, _ target: String) -> [JSON] {
+func stringDiff(_ source: String, _ target: String) -> AnyCodable {
     switch Array(source).diff(Array(target)) {
     case .equal:
         return []

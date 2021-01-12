@@ -1,25 +1,23 @@
 import Foundation
 import Combine
-import NIO
-import SwiftyJSON
 
 protocol OperationalTransformQuery {
     var collection: String { get }
-    var query: JSON { get }
+    var query: AnyCodable { get }
     func put(_ data: [VersionedDocumentData]) throws
     func sync(_ diffs: [ArrayChange]) throws
 }
 
 final public class ShareQueryCollection<Entity> where Entity: Codable {
     public let collection: String
-    public let query: JSON
+    public let query: AnyCodable
 
     public private(set) var documents = CurrentValueSubject<[ShareDocument<Entity>], Never>([])
 
     var cascadeSubscription = true
     private let connection: ShareConnection
 
-    init(_ query: JSON, in collection: String, connection: ShareConnection) {
+    init(_ query: AnyCodable, in collection: String, connection: ShareConnection) {
         self.collection = collection
         self.query = query
         self.connection = connection

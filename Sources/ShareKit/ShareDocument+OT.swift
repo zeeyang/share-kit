@@ -1,10 +1,9 @@
 import Foundation
-import SwiftyJSON
 
 protocol OperationalTransformDocument {
     func pause()
     func resume()
-    func put(_ data: JSON?, version: UInt, type: OperationalTransformType?) throws
+    func put(_ data: AnyCodable?, version: UInt, type: OperationalTransformType?) throws
     func sync(_ data: OperationData, version: UInt) throws
     func ack(version: UInt, sequence: UInt) throws
     func rollback(_ data: OperationData?, version: UInt) throws
@@ -29,7 +28,7 @@ extension ShareDocument: OperationalTransformDocument {
     }
 
     // Replace document data
-    func put(_ data: JSON?, version: UInt, type: OperationalTransformType?) throws {
+    func put(_ data: AnyCodable?, version: UInt, type: OperationalTransformType?) throws {
         if let type = type {
             guard let transformer = OperationalTransformTypes[type] else {
                 throw ShareDocumentError.operationalTransformType

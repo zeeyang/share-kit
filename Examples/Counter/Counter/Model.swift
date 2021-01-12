@@ -12,22 +12,35 @@ class CounterViewModel: ObservableObject {
 
     private var document: ShareDocument<Counter>?
     private var bag = Set<AnyCancellable>()
+    private var client: ShareClient?
 
     init() {
-        ShareClient(eventLoopGroupProvider: .createNew).connect("ws://localhost:8080") { connection in
+        let client = ShareClient(eventLoopGroupProvider: .createNew)
+        client.connect("ws://localhost:8080") { connection in
             guard let document: ShareDocument<Counter> = try? connection.subscribe(document: "counter", in: "examples") else {
                 return
             }
-            document.data
+            document.value
                 .compactMap { $0 }
                 .receive(on: RunLoop.main)
                 .assign(to: \.counter, on: self)
                 .store(in: &self.bag)
             self.document = document
         }
+        self.client = client
+    }
+
+    deinit {
+        try? client?.syncShutdown()
     }
 
     func bumpCounter() {
-        try? document?.change(amount: 1, at: "numClicks")
+        do {
+            try document?.change {
+                try $0.numClicks.set(counter.numClicks + 1)
+            }
+        } catch {
+            print(error)
+        }
     }
 }
